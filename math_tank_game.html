@@ -1,0 +1,2921 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Math Tank Battle</title>
+    <style>
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            font-family: 'Orbitron', sans-serif;
+            background: #000;
+        }
+        canvas { 
+            display: block; 
+            width: 100%; 
+            height: 100%;
+        }
+        #ui-container {
+            position: absolute;
+            bottom: 20px;
+            left: 0;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            pointer-events: none;
+        }
+        #game-ui {
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            pointer-events: auto;
+            border: 1px solid rgba(0, 255, 255, 0.3);
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.2);
+        }
+        .control-row {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+        .control-label {
+            width: 80px;
+            text-shadow: 0 0 5px #00ffff;
+        }
+        .angle-hint {
+            font-size: 12px;
+            opacity: 0.8;
+            color: #aaffff;
+        }
+        input[type="range"] {
+            width: 150px;
+            -webkit-appearance: none;
+            height: 8px;
+            background: linear-gradient(90deg, #001f3f, #00ffff);
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 15px;
+            height: 15px;
+            background: white;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 5px #00ffff;
+        }
+        button {
+            background: linear-gradient(to bottom, #006F82, #00404D);
+            border: none;
+            color: white;
+            padding: 10px 15px;
+            text-align: center;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            border: 1px solid #00ffff;
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+            text-shadow: 0 0 5px #00ffff;
+        }
+        button:hover {
+            background: linear-gradient(to bottom, #008FAA, #006F82);
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.8);
+        }
+        button:disabled {
+            background: #333;
+            cursor: not-allowed;
+            border: 1px solid #555;
+            box-shadow: none;
+        }
+        #math-question {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(0, 0, 0, 0.9);
+            padding: 30px;
+            border-radius: 10px;
+            text-align: center;
+            color: white;
+            width: 350px;
+            border: 2px solid rgba(0, 255, 255, 0.3);
+            box-shadow: 0 0 30px rgba(0, 255, 255, 0.3);
+            backdrop-filter: blur(5px);
+        }
+        #math-question h3 {
+            color: #00ffff;
+            text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+            font-size: 24px;
+            margin-top: 0;
+        }
+        #math-question input {
+            margin-top: 20px;
+            padding: 10px;
+            width: 100px;
+            text-align: center;
+            background-color: rgba(255, 255, 255, 0.1);
+            border: 2px solid #00ffff;
+            border-radius: 5px;
+            color: white;
+            font-size: 20px;
+        }
+        #result-message {
+            height: 20px;
+            color: white;
+            text-align: center;
+            font-weight: bold;
+            margin-top: 10px;
+            text-shadow: 0 0 5px rgba(255, 255, 255, 0.5);
+        }
+        .score-display {
+            position: absolute;
+            top: 20px;
+            left: 0;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 20px;
+            color: white;
+            text-shadow: 0 0 10px rgba(0, 255, 255, 0.8);
+        }
+        .score-container {
+            display: flex;
+            gap: 40px;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 10px 30px;
+            border-radius: 15px;
+            border: 1px solid rgba(0, 255, 255, 0.3);
+        }
+        .player-health, .computer-health {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+        .health-bar-container {
+            width: 200px;
+            height: 20px;
+            background-color: #333;
+            border-radius: 10px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        .player-health-bar, .computer-health-bar {
+            height: 100%;
+            width: 100%;
+            transition: width 0.3s ease;
+        }
+        .player-health-bar {
+            background: linear-gradient(to right, #00ff00, #007700);
+        }
+        .computer-health-bar {
+            background: linear-gradient(to right, #ff3333, #aa0000);
+        }
+        .health-text {
+            font-size: 14px;
+            margin-top: 5px;
+        }
+        .player-health .title {
+            color: #00aaff;
+        }
+        .computer-health .title {
+            color: #ff3b3b;
+        }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Score Display -->
+    <div class="score-display">
+        <div class="score-container">
+            <div class="player-health">
+                <div class="title">YOU</div>
+                <div class="health-bar-container">
+                    <div class="player-health-bar" id="player-health-bar"></div>
+                </div>
+                <div class="health-text" id="player-health-text">100%</div>
+            </div>
+            <div class="computer-health">
+                <div class="title">CPU</div>
+                <div class="health-bar-container">
+                    <div class="computer-health-bar" id="computer-health-bar"></div>
+                </div>
+                <div class="health-text" id="computer-health-text">100%</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Math question modal -->
+    <div id="math-question">
+        <h3>Answer to fire!</h3>
+        <p id="question-text">What is 5 + 3?</p>
+        <input type="number" id="answer-input">
+        <p><button id="submit-answer">Submit</button></p>
+    </div>
+
+    <!-- Game UI -->
+    <div id="ui-container">
+        <div id="game-ui">
+            <div class="control-row">
+                <span class="control-label">Angle:</span>
+                <input type="range" id="angle-control" min="0" max="90" value="45">
+                <span id="angle-value">45°</span>
+                <span class="angle-hint">(0° = horizontal, 90° = vertical)</span>
+            </div>
+            <div class="control-row">
+                <span class="control-label">Direction:</span>
+                <input type="range" id="direction-control" min="-45" max="45" value="0">
+                <span id="direction-value">0°</span>
+                <span class="angle-hint">(-45° = left, 0° = forward, 45° = right)</span>
+            </div>
+            <div class="control-row">
+                <span class="control-label">Power:</span>
+                <input type="range" id="power-control" min="10" max="100" value="50">
+                <span id="power-value">50%</span>
+            </div>
+            <div class="control-row">
+                <button id="fire-button">Answer Math & Fire!</button>
+            </div>
+            <div id="result-message"></div>
+        </div>
+    </div>
+
+    <!-- Load Three.js from CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/loaders/TextureLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/loaders/CubeTextureLoader.js"></script>
+    
+    <script>
+        // Game variables
+        let scene, camera, renderer, controls;
+        let terrain, playerTank, computerTank;
+        let cannonball = null;
+        let playerTurn = true;
+        let gameActive = true;
+        
+        // Physics variables
+        const gravity = 9.8;
+        let cannonballVelocity = { x: 0, y: 0, z: 0 };
+        
+        // Game state
+        let destructionMap = [];
+        
+        // Tank health instead of score (replaced playerScore and computerScore)
+        const MAX_HEALTH = 100;
+        let playerHealth = MAX_HEALTH;
+        let computerHealth = MAX_HEALTH;
+        
+        // Particle system containers
+        let explosionGroups = [];
+        let smokeParticles = [];
+        
+        // Powerup variables
+        let consecutiveCorrectAnswers = 0;
+        let playerHasTripleShot = false;
+        let playerHasShield = false;
+        let tripleShotUsed = false;
+        let currentShot = 0;
+        let totalTripleShotBalls = 3;
+        
+        // Initialize the game
+        initGame();
+        animate();
+        
+        function initGame() {
+            // Create scene
+            scene = new THREE.Scene();
+            
+            // Create camera
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 7, 12);
+            
+            // Create renderer with antialiasing and better shadows
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            document.body.appendChild(renderer.domElement);
+            
+            // Add controls for development purposes
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.25;
+            
+            // Add skybox
+            createSkybox();
+            
+            // Add fog for atmospheric effect
+            scene.fog = new THREE.FogExp2(0x789cce, 0.02);
+            
+            // Add lighting with dramatic effect
+            addLighting();
+            
+            // Create terrain
+            createTerrain();
+            
+            // Create tanks
+            createTanks();
+            
+            // Set up event listeners
+            setupEventListeners();
+            
+            // Handle window resize
+            window.addEventListener('resize', onWindowResize, false);
+        }
+
+        function createSkybox() {
+            // Create a dramatic sky background using a cube texture
+            const skyboxTextures = [
+                'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/cube/skybox/px.jpg',
+                'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/cube/skybox/nx.jpg',
+                'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/cube/skybox/py.jpg',
+                'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/cube/skybox/ny.jpg',
+                'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/cube/skybox/pz.jpg',
+                'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/cube/skybox/nz.jpg'
+            ];
+            
+            const loader = new THREE.CubeTextureLoader();
+            scene.background = loader.load(skyboxTextures);
+        }
+        
+        function addLighting() {
+            // Add dramatic lighting
+
+            // Ambient light
+            const ambientLight = new THREE.AmbientLight(0x333333, 0.4);
+            scene.add(ambientLight);
+            
+            // Main directional light (sun)
+            const mainLight = new THREE.DirectionalLight(0xffffcc, 1.2);
+            mainLight.position.set(10, 20, 15);
+            mainLight.castShadow = true;
+            
+            // Improve shadow quality
+            mainLight.shadow.camera.near = 0.5;
+            mainLight.shadow.camera.far = 50;
+            mainLight.shadow.camera.left = -20;
+            mainLight.shadow.camera.right = 20;
+            mainLight.shadow.camera.top = 20;
+            mainLight.shadow.camera.bottom = -20;
+            mainLight.shadow.mapSize.width = 2048;
+            mainLight.shadow.mapSize.height = 2048;
+            mainLight.shadow.bias = -0.0005;
+            
+            scene.add(mainLight);
+            
+            // Add a blue backlight for dramatic effect
+            const backLight = new THREE.DirectionalLight(0x0077ff, 0.5);
+            backLight.position.set(-10, 10, -10);
+            scene.add(backLight);
+            
+            // Add a subtle ground light for better terrain visibility
+            const groundLight = new THREE.HemisphereLight(0xffffbb, 0x080820, 0.5);
+            scene.add(groundLight);
+        }
+        
+        function createTerrain() {
+            // Create terrain geometry with more detail
+            const terrainGeometry = new THREE.PlaneGeometry(30, 15, 128, 64);
+            terrainGeometry.rotateX(-Math.PI / 2);
+            
+            // Create height map for terrain with more dramatic hills
+            const vertices = terrainGeometry.attributes.position.array;
+            
+            // Clear any previous destruction map - we don't need it anymore
+            destructionMap = [];
+            
+            // Calculate baseline heights for the terrain
+            for (let i = 0; i < vertices.length; i += 3) {
+                const x = vertices[i];
+                const z = vertices[i + 2];
+                
+                // Create more dramatic terrain with multiple frequencies
+                let height = 
+                    Math.sin(x / 3) * 0.8 + 
+                    Math.cos(z / 2) * 0.5 + 
+                    Math.sin(x / 1.5 + z / 2) * 0.3 +
+                    Math.sin(x * 0.5 + z * 0.5) * 0.4;
+                    
+                // Create a gradual, wide hill in the middle (centered at x=0)
+                // Using a wider Gaussian function for a more natural slope
+                const hillAmplitude = 2.5;   // Slightly lower height
+                const hillWidth = 8.0;       // Much wider hill for gradual slope
+                const hillCenter = 0;        // Center the hill between the tanks
+                
+                // Calculate distance from hill center (use actual distance, not absolute value)
+                const distanceFromCenter = x - hillCenter;
+                
+                // Create a bell-shaped hill that's tallest in the middle
+                // and gradually tapers off as we move away from the center
+                // Use a wider influence area (15 units instead of 8)
+                const hillHeight = hillAmplitude * Math.exp(-(distanceFromCenter * distanceFromCenter) / (2 * hillWidth * hillWidth));
+                height += hillHeight;
+                
+                // Apply a slight overall gradient to ensure the tanks are at similar heights
+                // This counters any systematic height differences between the sides
+                const sideBalance = -0.05 * x; // Slight downward slope from left to right
+                height += sideBalance;
+                
+                vertices[i + 1] = height;
+            }
+            
+            // Load a texture for the terrain
+            const textureLoader = new THREE.TextureLoader();
+            const grassTexture = textureLoader.load('https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/terrain/grasslight-big.jpg');
+            
+            // Create terrain material with textures
+            const terrainMaterial = new THREE.MeshStandardMaterial({
+                map: grassTexture,
+                roughness: 0.8,
+                metalness: 0.1,
+                bumpMap: grassTexture,
+                bumpScale: 0.1,
+            });
+            
+            // Repeat the texture for better detail
+            terrainMaterial.map.wrapS = terrainMaterial.map.wrapT = THREE.RepeatWrapping;
+            terrainMaterial.map.repeat.set(8, 4);
+            
+            // Create terrain mesh
+            terrain = new THREE.Mesh(terrainGeometry, terrainMaterial);
+            terrain.receiveShadow = true;
+            terrain.name = "terrain";
+            scene.add(terrain);
+        }
+        
+        function createTanks() {
+            // Create player tank (blue) on left, facing right (towards +X)
+            playerTank = createTank(0x0066ff, -10, getTerrainHeightAt(-10, 0) + 0.5, 0);
+            playerTank.name = "playerTank";
+            playerTank.userData.health = MAX_HEALTH; // Initialize health property
+            playerTank.userData.isPlayer = true;
+            scene.add(playerTank);
+            
+            // Create computer tank (red) on right, facing left (towards -X)
+            computerTank = createTank(0xff3333, 10, getTerrainHeightAt(10, 0) + 0.5, Math.PI);
+            computerTank.name = "computerTank";
+            computerTank.userData.health = MAX_HEALTH; // Initialize health property
+            computerTank.userData.isPlayer = false;
+            scene.add(computerTank);
+            
+            // Initialize tank velocities to zero
+            playerTank.userData.velocity = 0;
+            computerTank.userData.velocity = 0;
+            
+            // Create health bars for each tank
+            createHealthBar(playerTank);
+            createHealthBar(computerTank);
+            
+            // Initialize UI health bars
+            updateUIHealthBars();
+            
+            // Run tank gravity initially to ensure tanks are properly aligned with terrain
+            // and have proper rotations based on the terrain slope
+            setTimeout(() => {
+                applyTankGravity(playerTank, 1/60);
+                applyTankGravity(computerTank, 1/60);
+            }, 100); // Small delay to ensure terrain is fully loaded
+        }
+        
+        function createTank(color, x, y, rotation) {
+            const tank = new THREE.Group();
+            
+            // Tank body - more detailed
+            const bodyGeometry = new THREE.BoxGeometry(1.8, 0.6, 1.2); 
+            const bodyMaterial = new THREE.MeshStandardMaterial({ 
+                color: color,
+                roughness: 0.5,
+                metalness: 0.7,
+            });
+            const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+            body.castShadow = true;
+            body.receiveShadow = true;
+            tank.add(body);
+            
+            // Tank tracks - add detail
+            const trackGeometry = new THREE.BoxGeometry(2, 0.2, 1.4);
+            const trackMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x222222,
+                roughness: 0.8,
+                metalness: 0.2
+            });
+            const tracks = new THREE.Mesh(trackGeometry, trackMaterial);
+            tracks.position.y = -0.35;
+            tracks.castShadow = true;
+            tracks.receiveShadow = true;
+            tank.add(tracks);
+            
+            // Tank turret - more detailed
+            const turretGeometry = new THREE.CylinderGeometry(0.4, 0.5, 0.4, 8);
+            const turret = new THREE.Mesh(turretGeometry, bodyMaterial);
+            turret.position.set(0, 0.5, 0);
+            turret.castShadow = true;
+            turret.receiveShadow = true;
+            tank.add(turret);
+            
+            // Tank hatch on turret
+            const hatchGeometry = new THREE.CylinderGeometry(0.2, 0.2, 0.1, 8);
+            const hatch = new THREE.Mesh(hatchGeometry, trackMaterial);
+            hatch.position.set(0, 0.7, 0);
+            hatch.castShadow = true;
+            tank.add(hatch);
+            
+            // Tank cannon - simplified design without muzzle
+            // Create a cylinder that's already aligned along the X-axis
+            // We'll rotate this cylinder from its default orientation (Y-axis) to the X-axis
+            const cannonGeometry = new THREE.CylinderGeometry(0.1, 0.1, 1.2, 16);
+            const cannonMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x222222,
+                roughness: 0.4,
+                metalness: 0.8 
+            });
+            const cannon = new THREE.Mesh(cannonGeometry, cannonMaterial);
+            
+            // Rotate the cannon's default orientation to be along the X axis
+            // By default cylinders in Three.js point along the Y axis
+            cannon.rotation.z = Math.PI / 2; // Rotate 90 degrees to align with X axis
+            
+            // For player tank (facing right/+X)
+            if (rotation === 0) {
+                // Position cannon on the right side of turret with slight right offset
+                cannon.position.set(0.3, 0.3, 0.2);
+                
+                // Set default angle to 45 degrees (same as UI default)
+                // Since we've pre-rotated the cannon to align with X axis,
+                // we now apply the angle from that starting position
+                cannon.rotation.z = Math.PI / 2 + THREE.MathUtils.degToRad(45);
+            } 
+            // For computer tank (facing left/-X)
+            else {
+                // Position cannon on the left side of turret with slight left offset
+                cannon.position.set(0.3, 0.3, -0.2);
+                
+                // For computer tank, we need to rotate in the opposite direction
+                // PI/2 for initial X alignment, then PI to face left, then the angle
+                cannon.rotation.z = Math.PI / 2 + Math.PI - THREE.MathUtils.degToRad(30);
+            }
+            
+            cannon.castShadow = true;
+            cannon.receiveShadow = true;
+            tank.userData.cannon = cannon;
+            tank.add(cannon);
+            
+            // Position tank
+            tank.position.set(x, y, 0);
+            
+            return tank;
+        }
+        
+        function getTerrainHeightAt(x, z) {
+            // Raycasting to find the height of terrain at a given point
+            if (!terrain) return 0; // Add safety check for terrain
+            
+            const raycaster = new THREE.Raycaster();
+            raycaster.set(
+                new THREE.Vector3(x, 10, z),
+                new THREE.Vector3(0, -1, 0)
+            );
+            
+            const intersects = raycaster.intersectObject(terrain);
+            if (intersects.length > 0) {
+                return intersects[0].point.y;
+            }
+            
+            return 0;
+        }
+        
+        function setupEventListeners() {
+            // Set up event listeners for controls
+            document.getElementById('angle-control').addEventListener('input', function() {
+                const angle = document.getElementById('angle-control').value;
+                document.getElementById('angle-value').textContent = angle + '°';
+                // The cannon angle is updated in the updateCannons function
+            });
+            
+            document.getElementById('power-control').addEventListener('input', function() {
+                const power = document.getElementById('power-control').value;
+                document.getElementById('power-value').textContent = power;
+            });
+            
+            // Add event listener for the direction control
+            document.getElementById('direction-control').addEventListener('input', function() {
+                const direction = document.getElementById('direction-control').value;
+                document.getElementById('direction-value').textContent = direction + '°';
+                
+                // Update the tank's rotation based on the direction control
+                if (playerTank) {
+                    // Convert direction from degrees to radians for rotation
+                    const directionRad = THREE.MathUtils.degToRad(-direction); // Negative because positive is right
+                    playerTank.rotation.y = directionRad;
+                    
+                    // Make sure the tank stays on the terrain after rotation
+                    const tankPosition = playerTank.position.clone();
+                    const terrainHeight = getTerrainHeightAt(tankPosition.x, tankPosition.z);
+                    playerTank.position.y = terrainHeight + 0.5; // 0.5 is the offset from the terrain
+                }
+            });
+            
+            document.getElementById('fire-button').addEventListener('click', function() {
+                if (playerTurn && !cannonball) {
+                    // Show math question first instead of firing directly
+                    showMathQuestion();
+                }
+            });
+            
+            // Answer submission - using the correct ID 'submit-answer' instead of 'answer-submit'
+            document.getElementById('submit-answer').addEventListener('click', function() {
+                checkAnswer();
+            });
+            
+            // Initialize the power-ups display
+            updatePowerupsDisplay();
+        }
+        
+        function showMathQuestion() {
+            // Generate a random math question suitable for 2nd graders
+            const num1 = Math.floor(Math.random() * 10) + 1;
+            const num2 = Math.floor(Math.random() * 10) + 1;
+            const operationRand = Math.random();
+            
+            let question, answer;
+            
+            if (operationRand < 0.5) {
+                // Addition
+                question = `What is ${num1} + ${num2}?`;
+                answer = num1 + num2;
+            } else {
+                // Subtraction (ensure positive result for 2nd graders)
+                const larger = Math.max(num1, num2);
+                const smaller = Math.min(num1, num2);
+                question = `What is ${larger} - ${smaller}?`;
+                answer = larger - smaller;
+            }
+            
+            document.getElementById('question-text').textContent = question;
+            document.getElementById('answer-input').value = '';
+            document.getElementById('math-question').style.display = 'block';
+            document.getElementById('answer-input').focus();
+            
+            // Store the answer for checking
+            document.getElementById('math-question').dataset.answer = answer;
+        }
+        
+        function checkAnswer() {
+            const userAnswer = parseInt(document.getElementById('answer-input').value);
+            const correctAnswer = parseInt(document.getElementById('math-question').dataset.answer);
+            
+            if (userAnswer === correctAnswer) {
+                // Correct answer - track consecutive correct answers
+                consecutiveCorrectAnswers++;
+                
+                // Check for powerups
+                checkForPowerups();
+                
+                // Hide math question
+                document.getElementById('math-question').style.display = 'none';
+                
+                // Show success message including streak if relevant
+                let resultMessage = 'Correct! Firing cannon!';
+                if (consecutiveCorrectAnswers > 1) {
+                    resultMessage += ` (${consecutiveCorrectAnswers} correct in a row!)`;
+                }
+                
+                document.getElementById('result-message').textContent = resultMessage;
+                document.getElementById('result-message').style.color = '#4CAF50';
+                
+                // Fire the cannon
+                if (playerHasTripleShot && !tripleShotUsed) {
+                    tripleShotUsed = true;
+                    currentShot = 0;
+                    fireTripleShot();
+                } else {
+                    fireCannon();
+                }
+            } else {
+                // Wrong answer - reset consecutive answers
+                consecutiveCorrectAnswers = 0;
+                updatePowerupsDisplay();
+                
+                document.getElementById('result-message').textContent = 'Wrong answer! Try again.';
+                document.getElementById('result-message').style.color = '#FF0000';
+                document.getElementById('answer-input').value = '';
+                document.getElementById('answer-input').focus();
+            }
+        }
+        
+        // New function to check for and activate powerups
+        function checkForPowerups() {
+            if (consecutiveCorrectAnswers === 3 && !playerHasTripleShot && !playerHasShield) {
+                // First powerup: Triple Shot
+                playerHasTripleShot = true;
+                tripleShotUsed = false;
+                
+                // Show powerup notification
+                showPowerupNotification("Triple Shot activated! Your next attack will fire 3 cannonballs!");
+            } 
+            else if (consecutiveCorrectAnswers === 6 && playerHasTripleShot && !playerHasShield) {
+                // Second powerup: Shield
+                playerHasShield = true;
+                
+                // Apply shield to player tank
+                applyShieldEffect(playerTank);
+                
+                // Show powerup notification
+                showPowerupNotification("Shield activated! You're protected from the next hit!");
+            }
+            
+            // Update UI to reflect powerups
+            updatePowerupsDisplay();
+        }
+
+        // Function to show powerup notification
+        function showPowerupNotification(message) {
+            // Create notification element if it doesn't exist
+            if (!document.getElementById('powerup-notification')) {
+                const notification = document.createElement('div');
+                notification.id = 'powerup-notification';
+                notification.style.position = 'absolute';
+                notification.style.top = '50%';
+                notification.style.left = '50%';
+                notification.style.transform = 'translate(-50%, -50%)';
+                notification.style.background = 'rgba(0, 0, 0, 0.8)';
+                notification.style.color = '#00ffff';
+                notification.style.padding = '20px';
+                notification.style.borderRadius = '10px';
+                notification.style.textAlign = 'center';
+                notification.style.fontSize = '24px';
+                notification.style.fontWeight = 'bold';
+                notification.style.boxShadow = '0 0 20px rgba(0, 255, 255, 0.5)';
+                notification.style.zIndex = '1000';
+                notification.style.opacity = '0';
+                notification.style.transition = 'opacity 0.5s';
+                document.body.appendChild(notification);
+            }
+            
+            const notification = document.getElementById('powerup-notification');
+            notification.textContent = message;
+            notification.style.opacity = '1';
+            
+            // Fade out notification after 3 seconds
+            setTimeout(() => {
+                notification.style.opacity = '0';
+            }, 3000);
+        }
+
+        // Function to update powerups display in UI
+        function updatePowerupsDisplay() {
+            // Create powerup display if it doesn't exist
+            if (!document.getElementById('powerups-display')) {
+                const powerupsDisplay = document.createElement('div');
+                powerupsDisplay.id = 'powerups-display';
+                powerupsDisplay.style.position = 'absolute';
+                powerupsDisplay.style.top = '120px';
+                powerupsDisplay.style.left = '0';
+                powerupsDisplay.style.width = '100%';
+                powerupsDisplay.style.display = 'flex';
+                powerupsDisplay.style.justifyContent = 'center';
+                powerupsDisplay.style.pointerEvents = 'none';
+                
+                const powerupsContainer = document.createElement('div');
+                powerupsContainer.style.background = 'rgba(0, 0, 0, 0.7)';
+                powerupsContainer.style.padding = '10px 20px';
+                powerupsContainer.style.borderRadius = '10px';
+                powerupsContainer.style.display = 'flex';
+                powerupsContainer.style.gap = '15px';
+                powerupsContainer.style.border = '1px solid rgba(0, 255, 255, 0.3)';
+                
+                const streakDisplay = document.createElement('div');
+                streakDisplay.id = 'streak-display';
+                streakDisplay.style.color = '#FFFFFF';
+                streakDisplay.textContent = 'Streak: 0';
+                
+                const tripleShotIndicator = document.createElement('div');
+                tripleShotIndicator.id = 'triple-shot-indicator';
+                tripleShotIndicator.style.color = '#888888';
+                tripleShotIndicator.textContent = '🔺 Triple Shot';
+                
+                const shieldIndicator = document.createElement('div');
+                shieldIndicator.id = 'shield-indicator';
+                shieldIndicator.style.color = '#888888';
+                shieldIndicator.textContent = '🛡️ Shield';
+                
+                powerupsContainer.appendChild(streakDisplay);
+                powerupsContainer.appendChild(tripleShotIndicator);
+                powerupsContainer.appendChild(shieldIndicator);
+                powerupsDisplay.appendChild(powerupsContainer);
+                
+                document.body.appendChild(powerupsDisplay);
+            }
+            
+            // Update the display
+            if (document.getElementById('streak-display')) {
+                document.getElementById('streak-display').textContent = `Streak: ${consecutiveCorrectAnswers}`;
+            }
+            
+            if (document.getElementById('triple-shot-indicator')) {
+                const tripleShotIndicator = document.getElementById('triple-shot-indicator');
+                if (playerHasTripleShot && !tripleShotUsed) {
+                    tripleShotIndicator.style.color = '#00ffff';
+                    tripleShotIndicator.style.textShadow = '0 0 5px rgba(0, 255, 255, 0.7)';
+                } else {
+                    tripleShotIndicator.style.color = '#888888';
+                    tripleShotIndicator.style.textShadow = 'none';
+                }
+            }
+            
+            if (document.getElementById('shield-indicator')) {
+                const shieldIndicator = document.getElementById('shield-indicator');
+                if (playerHasShield) {
+                    shieldIndicator.style.color = '#00ffff';
+                    shieldIndicator.style.textShadow = '0 0 5px rgba(0, 255, 255, 0.7)';
+                } else {
+                    shieldIndicator.style.color = '#888888';
+                    shieldIndicator.style.textShadow = 'none';
+                }
+            }
+        }
+
+        // Triple shot implementation
+        function fireTripleShot() {
+            // Create and fire three cannonballs with slight angle variations
+            if (currentShot < totalTripleShotBalls) {
+                // Fire cannonball with small angle adjustments
+                const angleOffset = (currentShot - 1) * 5; // -5, 0, +5 degrees
+                fireCannon(angleOffset);
+                
+                // Schedule the next shot
+                currentShot++;
+                if (currentShot < totalTripleShotBalls) {
+                    setTimeout(fireTripleShot, 300);
+                } else {
+                    // Reset triple shot after all shots are fired
+                    playerHasTripleShot = false;
+                    tripleShotUsed = false;
+                    updatePowerupsDisplay();
+                }
+            }
+        }
+
+        // Apply shield effect to tank
+        function applyShieldEffect(tank) {
+            // Create a shield mesh
+            const shieldGeometry = new THREE.SphereGeometry(1.5, 32, 32);
+            const shieldMaterial = new THREE.MeshBasicMaterial({
+                color: 0x00ffff,
+                transparent: true,
+                opacity: 0.3
+            });
+            const shield = new THREE.Mesh(shieldGeometry, shieldMaterial);
+            shield.name = "shield";
+            
+            // Add the shield to the tank
+            tank.add(shield);
+            
+            // Add a pulsating animation to the shield
+            const startTime = Date.now();
+            const animateShield = function() {
+                if (!tank.getObjectByName("shield")) return; // Stop if shield is removed
+                
+                const elapsedTime = (Date.now() - startTime) / 1000;
+                const scale = 1 + 0.1 * Math.sin(elapsedTime * 3);
+                shield.scale.set(scale, scale, scale);
+                
+                requestAnimationFrame(animateShield);
+            };
+            
+            animateShield();
+        }
+
+        // Modified fireCannon to support triple shot and horizontal direction
+        function fireCannon(angleOffset = 0) {
+            // Get angle and power
+            let angle = parseFloat(document.getElementById('angle-control').value);
+            const power = document.getElementById('power-control').value / 5;
+            
+            // Apply angle offset for triple shot
+            angle += angleOffset;
+            angle = Math.max(0, Math.min(90, angle)); // Keep within 0-90 range
+            
+            // Create cannonball with more detail
+            const cannonballGeometry = new THREE.SphereGeometry(0.2, 16, 16);
+            const cannonballMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x333333,
+                roughness: 0.5,
+                metalness: 0.8
+            });
+            cannonball = new THREE.Mesh(cannonballGeometry, cannonballMaterial);
+            cannonball.castShadow = true;
+            
+            // Position the cannonball at the end of the tank's cannon
+            const tank = playerTurn ? playerTank : computerTank;
+            
+            // Get the world position of the cannon tip
+            const cannonWorldPos = new THREE.Vector3();
+            tank.userData.cannon.getWorldPosition(cannonWorldPos);
+            
+            // Get the direction vector from the cannon's rotation
+            const verticalAngleRad = THREE.MathUtils.degToRad(angle);
+            const direction = new THREE.Vector3(
+                Math.cos(verticalAngleRad),
+                Math.sin(verticalAngleRad),
+                0
+            );
+            
+            // Transform direction to world space (accounting for tank's rotation)
+            const worldDirection = direction.clone();
+            worldDirection.applyQuaternion(tank.quaternion);
+            
+            // Ensure z-component is zero when direction is 0 (for player tank)
+            if (playerTurn && document.getElementById('direction-control').value == 0) {
+                // If direction is 0, ensure the shot is perfectly straight by zeroing out z component
+                worldDirection.z = 0;
+                // Re-normalize to maintain consistent power
+                worldDirection.normalize();
+            } else {
+                // Normal case - just normalize
+                worldDirection.normalize();
+            }
+            
+            // Calculate cannonball position at the end of the cannon
+            // Since we've updated the cannon to pivot at the base, the muzzle is at the tip
+            // The current cannon position is already adjusted for the rotation angle
+            // So we don't need to add the length again - the cannonWorldPos is already at the end
+            cannonball.position.copy(cannonWorldPos);
+            scene.add(cannonball);
+            
+            // Set velocity based on direction and power
+            cannonballVelocity = {
+                x: worldDirection.x * power,
+                y: worldDirection.y * power,
+                z: worldDirection.z * power
+            };
+            
+            // Create muzzle flash effect at cannon tip
+            const muzzleFlashGeometry = new THREE.SphereGeometry(0.3, 16, 16);
+            const muzzleFlashMaterial = new THREE.MeshBasicMaterial({
+                color: 0xffff00,
+                transparent: true,
+                opacity: 1
+            });
+            const muzzleFlash = new THREE.Mesh(muzzleFlashGeometry, muzzleFlashMaterial);
+            muzzleFlash.position.copy(cannonWorldPos);
+            scene.add(muzzleFlash);
+            
+            // Add a point light for the muzzle flash
+            const flashLight = new THREE.PointLight(0xffff00, 2, 3);
+            flashLight.position.copy(cannonWorldPos);
+            scene.add(flashLight);
+            
+            // Fade out muzzle flash
+            setTimeout(() => {
+                scene.remove(muzzleFlash);
+                scene.remove(flashLight);
+            }, 100);
+            
+            // Create smoke effect from cannon
+            for (let i = 0; i < 10; i++) {
+                setTimeout(() => {
+                    const smokeGeometry = new THREE.SphereGeometry(0.1 + Math.random() * 0.1, 8, 8);
+                    const smokeMaterial = new THREE.MeshBasicMaterial({
+                        color: 0x888888,
+                        transparent: true,
+                        opacity: 0.7
+                    });
+                    
+                    const smoke = new THREE.Mesh(smokeGeometry, smokeMaterial);
+                    smoke.position.copy(cannonWorldPos);
+                    smoke.position.x += (Math.random() - 0.5) * 0.2;
+                    smoke.position.y += (Math.random() - 0.5) * 0.2;
+                    smoke.position.z += (Math.random() - 0.5) * 0.2;
+                    
+                    smoke.userData = {
+                        velocity: new THREE.Vector3(
+                            worldDirection.x * (Math.random() * 0.5 + 0.5),
+                            worldDirection.y * (Math.random() * 0.5 + 0.5) + Math.random() * 0.5,
+                            worldDirection.z * (Math.random() * 0.5 + 0.5)
+                        ),
+                        rotationSpeed: (Math.random() - 0.5) * 0.01,
+                        lifespan: 1 + Math.random(),
+                        creationTime: Date.now()
+                    };
+                    
+                    scene.add(smoke);
+                    smokeParticles.push(smoke);
+                }, i * 20);
+            }
+            
+            // Shake the camera
+            cameraShake(0.3, 300);
+            
+            // Disable controls during firing
+            document.getElementById('fire-button').disabled = true;
+        }
+        
+        function updateCannonball(deltaTime) {
+            if (!cannonball) return;
+            
+            try {
+                // Apply gravity
+                cannonballVelocity.y -= gravity * deltaTime;
+                
+                // Make sure cannonball is still valid before updating position
+                if (!cannonball || !cannonball.position) {
+                    console.warn("Cannonball or its position became null");
+                    resetCannonball();
+                    return;
+                }
+                
+                // Update position
+                cannonball.position.x += cannonballVelocity.x * deltaTime;
+                cannonball.position.y += cannonballVelocity.y * deltaTime;
+                cannonball.position.z += cannonballVelocity.z * deltaTime;
+                
+                // Check again if cannonball is still valid after updating position
+                if (!cannonball || !cannonball.position) {
+                    console.warn("Cannonball or its position became null after position update");
+                    resetCannonball();
+                    return;
+                }
+                
+                // Check for collision with terrain
+                const terrainHeight = getTerrainHeightAt(cannonball.position.x, cannonball.position.z);
+                
+                if (cannonball && cannonball.position && cannonball.position.y <= terrainHeight) {
+                    // Calculate impact speed (vertical component)
+                    const impactSpeed = Math.abs(cannonballVelocity.y);
+                    
+                    // Check if impact is powerful enough to create a crater
+                    if (impactSpeed > 2.0) {
+                        // Handle full impact with terrain deformation
+                        handleImpact();
+                    } else {
+                        // Low-speed impact - create a small bounce
+                        // Reverse vertical velocity with damping for bounce effect
+                        cannonballVelocity.y = -cannonballVelocity.y * 0.4; // 40% energy retained
+                        
+                        // Apply ground friction to horizontal velocity
+                        cannonballVelocity.x *= 0.8;
+                        cannonballVelocity.z *= 0.8;
+                        
+                        // Make sure the cannonball is above the terrain
+                        cannonball.position.y = terrainHeight + 0.2;
+                        
+                        // Create a small dust effect for the bounce
+                        createDenseSmoke(
+                            cannonball.position.clone(),
+                            5, // Fewer particles
+                            0xAAAAAA, // Dust color
+                            0.5 // Short duration
+                        );
+                        
+                        // Check if this was a very low bounce (nearly stopped)
+                        if (Math.abs(cannonballVelocity.y) < 1.0 && 
+                            Math.sqrt(cannonballVelocity.x * cannonballVelocity.x + 
+                                      cannonballVelocity.z * cannonballVelocity.z) < 1.0) {
+                            // Ball has nearly stopped - end its movement
+                            handleImpact();
+                        }
+                    }
+                    return; // Exit early since impact is handled
+                }
+                
+                // Make sure cannonball still exists before checking bounds
+                if (!cannonball || !cannonball.position) return;
+                
+                // Check if cannonball is out of bounds
+                if (
+                    Math.abs(cannonball.position.x) > 15 ||
+                    cannonball.position.y < -10 ||
+                    Math.abs(cannonball.position.z) > 10
+                ) {
+                    resetCannonball();
+                    switchTurn();
+                    return; // Exit early since cannonball is now destroyed
+                }
+                
+                // Check for collision with tanks
+                if (cannonball && playerTank && computerTank) {
+                    checkTankCollision();
+                }
+            } catch (error) {
+                console.error("Error in updateCannonball:", error);
+                resetCannonball(); // Safety reset if something goes wrong
+            }
+        }
+        
+        function handleImpact() {
+            // Create explosion with more dramatic effect
+            createExplosion(cannonball.position.clone());
+            
+            // Modify terrain at impact point
+            modifyTerrainAtImpact(cannonball.position.x, cannonball.position.z);
+            
+            // Camera shake on impact
+            cameraShake(0.4, 500);
+            
+            // Remove cannonball
+            resetCannonball();
+            
+            // Switch turns
+            switchTurn();
+        }
+        
+        function createExplosion(position) {
+            // Create explosion with more dramatic effect
+            const particleCount = 50; // More particles
+            const explosionGroup = new THREE.Group();
+            explosionGroup.position.copy(position);
+            explosionGroup.userData.creationTime = Date.now();
+            explosionGroup.userData.duration = 1.5; // Longer duration
+            
+            // Create a point light for the explosion
+            const explosionLight = new THREE.PointLight(0xff7700, 5, 3);
+            explosionLight.position.set(0, 0, 0);
+            explosionGroup.add(explosionLight);
+            
+            // Create a mesh for the core explosion
+            const coreGeometry = new THREE.SphereGeometry(0.3, 16, 16);
+            const coreMaterial = new THREE.MeshBasicMaterial({
+                color: 0xffff00,
+                transparent: true,
+                opacity: 1
+            });
+            const core = new THREE.Mesh(coreGeometry, coreMaterial);
+            explosionGroup.add(core);
+            
+            // Create fire particles
+            for (let i = 0; i < particleCount; i++) {
+                const size = Math.random() * 0.2 + 0.1;
+                const particleGeometry = new THREE.SphereGeometry(size, 8, 8);
+                const particleMaterial = new THREE.MeshBasicMaterial({
+                    color: new THREE.Color(
+                        Math.random() * 0.2 + 0.8, // Red
+                        Math.random() * 0.5,      // Green
+                        Math.random() * 0.1       // Blue
+                    ),
+                    transparent: true,
+                    opacity: 1
+                });
+                
+                const particle = new THREE.Mesh(particleGeometry, particleMaterial);
+                
+                // Random position within explosion radius
+                const theta = Math.random() * Math.PI * 2;
+                const phi = Math.random() * Math.PI;
+                const radius = Math.random() * 0.8;
+                
+                particle.position.set(
+                    radius * Math.sin(phi) * Math.cos(theta),
+                    radius * Math.sin(phi) * Math.sin(theta),
+                    radius * Math.cos(phi)
+                );
+                
+                // Store velocity for animation
+                particle.userData.velocity = particle.position.clone().normalize().multiplyScalar(Math.random() * 3 + 1);
+                explosionGroup.add(particle);
+            }
+            
+            // Add smoke particles that linger
+            for (let i = 0; i < 20; i++) {
+                const smokeGeometry = new THREE.SphereGeometry(0.2, 8, 8);
+                const smokeMaterial = new THREE.MeshBasicMaterial({
+                    color: 0x555555,
+                    transparent: true,
+                    opacity: 0.7
+                });
+                
+                const smoke = new THREE.Mesh(smokeGeometry, smokeMaterial);
+                
+                // Position smoke particles
+                const angle = Math.random() * Math.PI * 2;
+                const radius = Math.random() * 0.3;
+                smoke.position.set(
+                    position.x + Math.cos(angle) * radius,
+                    position.y + 0.3 + Math.random() * 0.5,
+                    position.z + Math.sin(angle) * radius
+                );
+                
+                // Store smoke properties
+                smoke.userData = {
+                    velocity: new THREE.Vector3(
+                        (Math.random() - 0.5) * 0.2,
+                        Math.random() * 0.5 + 0.5,
+                        (Math.random() - 0.5) * 0.2
+                    ),
+                    rotationSpeed: (Math.random() - 0.5) * 0.01,
+                    lifespan: 3 + Math.random() * 2,
+                    creationTime: Date.now()
+                };
+                
+                scene.add(smoke);
+                smokeParticles.push(smoke);
+            }
+            
+            scene.add(explosionGroup);
+            explosionGroups.push(explosionGroup);
+        }
+        
+        function modifyTerrainAtImpact(x, z) {
+            // Create a dramatic crater at the impact point
+            const impactRadius = 2.5; // Increased from 1.5 to 2.5 for larger craters
+            const maxDepth = 0.8;     // Increased from 0.5 to 0.8 for deeper craters
+            
+            const terrainGeometry = terrain.geometry;
+            const position = terrainGeometry.attributes.position;
+            
+            // Create more debris particles
+            for (let i = 0; i < 25; i++) { // Increased from 15 to 25 debris pieces
+                const debrisSize = Math.random() * 0.25 + 0.05; // Larger debris sizes
+                const debrisGeometry = new THREE.BoxGeometry(
+                    debrisSize,
+                    debrisSize,
+                    debrisSize
+                );
+                
+                // Use varied colors for debris - mix of dirt and ground colors
+                const colorVariation = Math.random();
+                const debrisColor = colorVariation < 0.7 ? 
+                    new THREE.Color(0x7e6a45) : // Dirt color (70% of debris)
+                    new THREE.Color(0x4d8a3f);  // Grass color (30% of debris)
+                
+                const debrisMaterial = new THREE.MeshStandardMaterial({
+                    color: debrisColor,
+                    roughness: 0.9,
+                    metalness: 0.1
+                });
+                
+                const debris = new THREE.Mesh(debrisGeometry, debrisMaterial);
+                
+                // Position debris at impact point with wider spread
+                debris.position.set(
+                    x + (Math.random() - 0.5) * 2.0, // Wider horizontal spread
+                    getTerrainHeightAt(x, z) + Math.random() * 1.0 + 0.2, // Higher vertical spread
+                    z + (Math.random() - 0.5) * 2.0  // Wider depth spread
+                );
+                
+                // Random rotation
+                debris.rotation.set(
+                    Math.random() * Math.PI * 2,
+                    Math.random() * Math.PI * 2,
+                    Math.random() * Math.PI * 2
+                );
+                
+                // Set physics properties with more dramatic trajectories
+                debris.userData = {
+                    velocity: new THREE.Vector3(
+                        (Math.random() - 0.5) * 5,     // Faster horizontal movement
+                        Math.random() * 6 + 3,         // Higher vertical launch
+                        (Math.random() - 0.5) * 5      // Faster z-axis movement
+                    ),
+                    rotationSpeed: new THREE.Vector3(
+                        (Math.random() - 0.5) * 0.2,   // Faster rotation
+                        (Math.random() - 0.5) * 0.2,
+                        (Math.random() - 0.5) * 0.2
+                    ),
+                    lifespan: 2.5 + Math.random() * 1.5, // Longer lifespan
+                    creationTime: Date.now()
+                };
+                
+                debris.castShadow = true;
+                debris.receiveShadow = true;
+                
+                scene.add(debris);
+                smokeParticles.push(debris);
+            }
+            
+            // Add dust cloud at impact
+            createDenseSmoke(
+                new THREE.Vector3(x, getTerrainHeightAt(x, z) + 0.2, z), 
+                15, // Number of particles
+                0x8a7d5c, // Dust color
+                3  // Duration
+            );
+            
+            // Create a perfectly circular crater with a more dramatic edge
+            for (let i = 0; i < position.count; i++) {
+                const xPos = position.getX(i);
+                const yPos = position.getY(i);
+                const zPos = position.getZ(i);
+                
+                // Calculate exact distance from impact point to this vertex
+                const dx = xPos - x;
+                const dz = zPos - z;
+                const distance = Math.sqrt(dx*dx + dz*dz);
+                
+                // Only modify vertices within the impact radius (strict circle)
+                if (distance <= impactRadius) {
+                    // Calculate depth using a modified falloff function for a more dramatic crater
+                    // This creates a crater with steeper edges and a flatter bottom
+                    const t = distance / impactRadius;  // normalized distance (0 at center, 1 at edge)
+                    
+                    // Sharper edge falloff - more dramatic crater shape
+                    let falloff;
+                    if (t < 0.4) {
+                        // Flatter bottom in the center 40% of the crater
+                        falloff = 1.0;
+                    } else {
+                        // Steeper edges in the outer 60% of the crater
+                        falloff = Math.pow(1 - ((t - 0.4) / 0.6), 2.5);
+                    }
+                    
+                    const depth = maxDepth * falloff;
+                    
+                    // Lower the vertex to create the crater
+                    position.setY(i, yPos - depth);
+                    
+                    // For the rim, slightly raise vertices near the edge
+                    if (t > 0.8 && t <= 1.0) {
+                        // Create a raised rim at the edge of the crater
+                        const rimHeight = maxDepth * 0.3 * Math.pow((t - 0.8) / 0.2, 2);
+                        position.setY(i, yPos - depth + rimHeight);
+                    }
+                }
+            }
+            
+            // Update the geometry after all modifications
+            position.needsUpdate = true;
+            terrainGeometry.computeVertexNormals();
+            
+            // Check if any tank is near the impact and should be affected immediately
+            // This makes tanks fall immediately if the ground beneath them is destroyed
+            if (playerTank && computerTank) {
+                const distanceToPlayer = Math.sqrt(Math.pow(playerTank.position.x - x, 2) + Math.pow(playerTank.position.z - z, 2));
+                const distanceToComputer = Math.sqrt(Math.pow(computerTank.position.x - x, 2) + Math.pow(computerTank.position.z - z, 2));
+                
+                // If impact is close to a tank (within 2x the impact radius), set its position slightly above the terrain
+                // to trigger gravity in the next frame
+                if (distanceToPlayer < impactRadius * 2) {
+                    // Get the new terrain height and add a small lift to trigger falling
+                    const newTerrainHeight = getTerrainHeightAt(playerTank.position.x, playerTank.position.z);
+                    const currentTankHeight = playerTank.position.y - 0.5; // Subtract the usual offset
+                    
+                    // If the tank is now significantly above the terrain due to the crater, start its fall
+                    if (currentTankHeight > newTerrainHeight + 0.1) {
+                        // Initialize falling velocity if the tank should start falling
+                        playerTank.userData.velocity = 0.1; // Small initial velocity
+                    }
+                }
+                
+                if (distanceToComputer < impactRadius * 2) {
+                    const newTerrainHeight = getTerrainHeightAt(computerTank.position.x, computerTank.position.z);
+                    const currentTankHeight = computerTank.position.y - 0.5; // Subtract the usual offset
+                    
+                    if (currentTankHeight > newTerrainHeight + 0.1) {
+                        computerTank.userData.velocity = 0.1; // Small initial velocity
+                    }
+                }
+            }
+        }
+        
+        function checkTankCollision() {
+            if (!cannonball) return;
+            
+            // Check distance to player tank
+            const distanceToPlayer = cannonball.position.distanceTo(playerTank.position);
+            if (distanceToPlayer < 1 && !playerTurn) {
+                handleTankHit(playerTank);
+                return;
+            }
+            
+            // Check distance to computer tank
+            const distanceToComputer = cannonball.position.distanceTo(computerTank.position);
+            if (distanceToComputer < 1 && playerTurn) {
+                handleTankHit(computerTank);
+                return;
+            }
+        }
+        
+        function handleTankHit(tank) {
+            // Create more dramatic explosion effect
+            createExplosion(cannonball.position.clone());
+            
+            // Add multiple smaller explosions
+            for (let i = 0; i < 5; i++) { // Increased from 3 to 5 explosions
+                setTimeout(() => {
+                    const offset = new THREE.Vector3(
+                        (Math.random() - 0.5) * 1.5, // Slightly wider spread
+                        Math.random() * 0.7,         // Higher vertical spread
+                        (Math.random() - 0.5) * 1.5  // Slightly wider spread
+                    );
+                    createExplosion(tank.position.clone().add(offset));
+                }, i * 120); // Slightly faster sequence
+            }
+            
+            // Add immediate dense smoke effect at hit location
+            createDenseSmoke(tank.position.clone(), 30, 0x222222, 5);
+            
+            // More dramatic camera shake
+            cameraShake(1.0, 1200); // Increased intensity and duration
+            
+            // Check if tank has shield (only player can have shield for now)
+            if (tank === playerTank && playerHasShield) {
+                // Shield absorbs the hit
+                playerHasShield = false;
+                
+                // Remove shield visual effect
+                const shield = tank.getObjectByName("shield");
+                if (shield) tank.remove(shield);
+                
+                // Show shield protection message
+                document.getElementById('result-message').textContent = "Your shield absorbed the hit!";
+                document.getElementById('result-message').style.color = '#00ffff';
+                
+                // Update powerups display
+                updatePowerupsDisplay();
+                
+                // Reset cannonball
+                resetCannonball();
+                
+                // Switch turns
+                switchTurn();
+                return;
+            }
+            
+            // Calculate damage (reduced to take ~10 hits to destroy)
+            const baseDamage = 10; // Changed from 20 to 10 to require ~10 hits
+            const damageVariation = Math.random() * 2; // Reduced from 5 to 2 for more consistent damage
+            const damage = Math.floor(baseDamage + damageVariation);
+            
+            // Apply damage to tank's health
+            tank.userData.health = Math.max(0, tank.userData.health - damage);
+            
+            // Update health bar
+            updateHealthBar(tank);
+            
+            // Update UI health bars
+            updateUIHealthBars();
+            
+            // Update message with damage info
+            if (tank === playerTank) {
+                document.getElementById('result-message').textContent = `Computer hit you for ${damage} damage!`;
+                document.getElementById('result-message').style.color = '#ff5555';
+            } else {
+                document.getElementById('result-message').textContent = `You hit enemy for ${damage} damage!`;
+                document.getElementById('result-message').style.color = '#55ff55';
+            }
+            
+            // Reset cannonball
+            resetCannonball();
+            
+            // Check if tank is destroyed
+            if (tank.userData.health <= 0) {
+                // Tank destroyed
+                if (tank === playerTank) {
+                    document.getElementById('result-message').textContent = 'Your tank was destroyed!';
+                    endGame(false); // Player lost
+                } else {
+                    document.getElementById('result-message').textContent = 'You destroyed the enemy tank!';
+                    endGame(true); // Player won
+                }
+            } else {
+                // Switch turns if game continues
+                switchTurn();
+            }
+        }
+        
+        // New helper function to create dense smoke
+        function createDenseSmoke(position, particleCount = 20, color = 0x444444, duration = 3) {
+            for (let i = 0; i < particleCount; i++) {
+                setTimeout(() => {
+                    const smokeGeometry = new THREE.SphereGeometry(0.2 + Math.random() * 0.3, 8, 8);
+                    const smokeMaterial = new THREE.MeshBasicMaterial({
+                        color: color,
+                        transparent: true,
+                        opacity: 0.8 + Math.random() * 0.2
+                    });
+                    
+                    const smoke = new THREE.Mesh(smokeGeometry, smokeMaterial);
+                    
+                    // Position around the hit area with broader spread
+                    smoke.position.set(
+                        position.x + (Math.random() - 0.5) * 1.2,
+                        position.y + 0.5 + Math.random() * 1.0,
+                        position.z + (Math.random() - 0.5) * 1.2
+                    );
+                    
+                    // Set properties for more dramatic smoke
+                    smoke.userData = {
+                        velocity: new THREE.Vector3(
+                            (Math.random() - 0.5) * 0.3,  // More horizontal drift
+                            Math.random() * 0.7 + 0.5,    // More upward motion
+                            (Math.random() - 0.5) * 0.3   // More z-axis drift
+                        ),
+                        rotationSpeed: (Math.random() - 0.5) * 0.02,
+                        lifespan: duration + Math.random() * 3, // Longer lifespan
+                        creationTime: Date.now(),
+                        fadeDelay: 2.0 // Delay fading for 2 seconds
+                    };
+                    
+                    scene.add(smoke);
+                    smokeParticles.push(smoke);
+                }, i * 30); // Stagger the creation for a more dynamic effect
+            }
+        }
+        
+        function resetCannonball() {
+            if (cannonball) {
+                scene.remove(cannonball);
+                cannonball = null;
+                cannonballVelocity = { x: 0, y: 0, z: 0 };
+            }
+        }
+        
+        function switchTurn() {
+            playerTurn = !playerTurn;
+            
+            // Re-enable controls
+            document.getElementById('fire-button').disabled = false;
+            
+            // Set message
+            if (playerTurn) {
+                document.getElementById('result-message').textContent = 'Your turn!';
+            } else {
+                document.getElementById('result-message').textContent = 'Computer\'s turn...';
+                // Computer takes its turn after a delay
+                setTimeout(computerTurn, 2000);
+            }
+        }
+        
+        function computerTurn() {
+            if (gameActive && !playerTurn) {
+                // AI behavior - adjust angle based on player position
+                const angleToPlayer = calculateAngleToTarget(computerTank, playerTank.position);
+                
+                // For computer tank facing left, adjust cannon angle
+                computerTank.userData.cannon.rotation.z = Math.PI + angleToPlayer; // Start from PI (left) and add angle
+                
+                // Calculate power based on distance to player
+                const distance = computerTank.position.distanceTo(playerTank.position);
+                const power = Math.min(80, Math.max(30, distance * 3)); // Reduced factor from 5 to 3 to avoid overpowering computer shots
+                
+                // Fire with some random variation
+                const randomAngle = angleToPlayer + (Math.random() - 0.5) * 0.2;
+                const randomPower = power * (0.8 + Math.random() * 0.4) / 5; // Scale down less (changed from /10 to /5 to match player power)
+                
+                // Set velocity for computer's shot
+                cannonballVelocity = {
+                    x: -randomPower * Math.cos(randomAngle), // Negative X for shooting left
+                    y: randomPower * Math.sin(randomAngle),
+                    z: 0
+                };
+                
+                // Create cannonball
+                const cannonballGeometry = new THREE.SphereGeometry(0.2, 16, 16);
+                const cannonballMaterial = new THREE.MeshStandardMaterial({ color: 0x333333 });
+                cannonball = new THREE.Mesh(cannonballGeometry, cannonballMaterial);
+                cannonball.castShadow = true;
+                
+                // Position at the computer tank's cannon
+                const cannonWorldPos = new THREE.Vector3();
+                computerTank.userData.cannon.getWorldPosition(cannonWorldPos);
+                
+                // Create direction vector pointing toward player (left/-X)
+                const direction = new THREE.Vector3(
+                    -Math.cos(randomAngle),
+                    Math.sin(randomAngle),
+                    0
+                );
+                
+                // Position cannonball at end of barrel
+                const cannonDirection = direction.clone().normalize();
+                const cannonLength = 0.6;
+                cannonWorldPos.add(cannonDirection.multiplyScalar(cannonLength));
+                cannonball.position.copy(cannonWorldPos);
+                
+                scene.add(cannonball);
+                
+                // Shake camera
+                cameraShake(0.2, 300);
+                
+                // Disable fire button during computer's turn
+                document.getElementById('fire-button').disabled = true;
+            }
+        }
+        
+        function calculateAngleToTarget(tank, targetPosition) {
+            // Calculate the angle to hit the target
+            const distance = Math.sqrt(
+                Math.pow(targetPosition.x - tank.position.x, 2) +
+                Math.pow(targetPosition.z - tank.position.z, 2)
+            );
+            
+            // Calculate height difference
+            const heightDiff = targetPosition.y - tank.position.y;
+            
+            // Simple ballistic calculation - improved to account for distance and height
+            // Returns an angle in radians
+            const baseAngle = Math.atan2(distance, heightDiff) / 2;
+            
+            // Add some randomness for the computer (between 0.2 and 0.4 radians)
+            return Math.min(Math.PI/3, Math.max(0.1, baseAngle));
+        }
+        
+        function cameraShake(intensity, duration) {
+            const originalPosition = camera.position.clone();
+            let elapsed = 0;
+            
+            function shakeStep(delta) {
+                elapsed += delta;
+                
+                if (elapsed < duration / 1000) {
+                    // Apply random offset with decreasing intensity over time
+                    const remaining = 1 - (elapsed / (duration / 1000));
+                    camera.position.set(
+                        originalPosition.x + (Math.random() - 0.5) * intensity * remaining,
+                        originalPosition.y + (Math.random() - 0.5) * intensity * remaining,
+                        originalPosition.z + (Math.random() - 0.5) * intensity * remaining
+                    );
+                    
+                    requestAnimationFrame(deltaTime => shakeStep(deltaTime / 1000));
+                } else {
+                    // Reset to original position
+                    camera.position.copy(originalPosition);
+                }
+            }
+            
+            requestAnimationFrame(deltaTime => shakeStep(deltaTime / 1000));
+        }
+        
+        function endGame(playerWon) {
+            gameActive = false;
+            
+            // Display end game message with more dramatic effect
+            const message = playerWon 
+                ? 'You win! Great job with your math skills!'
+                : 'Computer wins! Keep practicing your math!';
+                
+            document.getElementById('result-message').textContent = message;
+            document.getElementById('result-message').style.fontSize = '18px';
+            
+            // Disable fire button
+            document.getElementById('fire-button').disabled = true;
+            
+            // Add option to restart
+            const restart = document.createElement('button');
+            restart.textContent = 'Play Again';
+            restart.style.marginTop = '10px';
+            restart.style.padding = '10px 20px';
+            restart.style.fontSize = '16px';
+            restart.addEventListener('click', () => {
+                location.reload();
+            });
+            
+            document.getElementById('game-ui').appendChild(restart);
+            
+            // Add visual celebration effects for winner
+            if (playerWon) {
+                createVictoryEffects(playerTank.position);
+                // Add smoke to losing computer tank's cannon
+                createLosingTankSmoke(computerTank);
+            } else {
+                createVictoryEffects(computerTank.position);
+                // Add smoke to losing player tank's cannon
+                createLosingTankSmoke(playerTank);
+            }
+        }
+        
+        // Function to create continuous smoke from the losing tank's cannon
+        function createLosingTankSmoke(tank) {
+            // Get cannon world position
+            const cannonWorldPos = new THREE.Vector3();
+            tank.userData.cannon.getWorldPosition(cannonWorldPos);
+            
+            // Create initial burst of dense smoke and sparks
+            createInitialExplosion(cannonWorldPos.clone());
+            
+            // Store reference to the interval so we can clear it if needed
+            const smokeInterval = setInterval(() => {
+                // Create dense, black smoke with varied sizes
+                const particleSize = 0.15 + Math.random() * 0.25; // Larger particles (was 0.1 + random * 0.15)
+                const smokeGeometry = new THREE.SphereGeometry(particleSize, 8, 8);
+                
+                // Mix of dark smoke (black, dark gray) and some fire particles (orange/red)
+                let smokeMaterial;
+                if (Math.random() < 0.15) { // 15% chance of fire particles
+                    // Create glowing ember/fire particle
+                    smokeMaterial = new THREE.MeshBasicMaterial({
+                        color: new THREE.Color(
+                            0.8 + Math.random() * 0.2, // Red
+                            0.2 + Math.random() * 0.3, // Green
+                            0.0                        // Blue
+                        ),
+                        transparent: true,
+                        opacity: 0.9
+                    });
+                } else {
+                    // Dark smoke with color variation
+                    const darkness = Math.random() * 0.2; // 0-0.2 (darker)
+                    smokeMaterial = new THREE.MeshBasicMaterial({
+                        color: new THREE.Color(darkness, darkness, darkness), // Very dark smoke
+                        transparent: true,
+                        opacity: 0.9
+                    });
+                }
+                
+                const smoke = new THREE.Mesh(smokeGeometry, smokeMaterial);
+                
+                // Position smoke at the end of the cannon with more variation
+                smoke.position.copy(cannonWorldPos);
+                
+                // Add some random variation to the position - wider spread
+                smoke.position.x += (Math.random() - 0.5) * 0.2;
+                smoke.position.y += (Math.random() - 0.5) * 0.2;
+                smoke.position.z += (Math.random() - 0.5) * 0.2;
+                
+                // Set longer lifespan for the smoke and more dramatic movement
+                smoke.userData = {
+                    velocity: new THREE.Vector3(
+                        (Math.random() - 0.5) * 0.2,  // More horizontal drift
+                        Math.random() * 0.7 + 0.5,    // Faster rise upward
+                        (Math.random() - 0.5) * 0.2   // More depth drift
+                    ),
+                    rotationSpeed: (Math.random() - 0.5) * 0.02,
+                    lifespan: 5 + Math.random() * 3, // Longer lifespan (was 4 + random * 2)
+                    creationTime: Date.now(),
+                    fadeDelay: 1.5 // Wait longer before fading
+                };
+                
+                scene.add(smoke);
+                smokeParticles.push(smoke);
+                
+                // Limit the number of smoke particles to prevent performance issues
+                if (smokeParticles.length > 300) { // Increased from 200 to 300
+                    clearInterval(smokeInterval);
+                }
+            }, 70); // Increased frequency (was 100ms)
+            
+            // Create occasional small secondary explosions for dramatic effect
+            const explosionInterval = setInterval(() => {
+                if (Math.random() < 0.3) { // 30% chance each interval
+                    // Position with slight offset from cannon
+                    const explosionPos = cannonWorldPos.clone();
+                    explosionPos.x += (Math.random() - 0.5) * 0.3;
+                    explosionPos.y += (Math.random() - 0.5) * 0.3;
+                    explosionPos.z += (Math.random() - 0.5) * 0.3;
+                    
+                    // Create small explosion effect
+                    const smallExplosion = new THREE.PointLight(0xff5500, 3, 2);
+                    smallExplosion.position.copy(explosionPos);
+                    scene.add(smallExplosion);
+                    
+                    // Remove after short duration
+                    setTimeout(() => {
+                        scene.remove(smallExplosion);
+                    }, 150);
+                    
+                    // Add some sparks
+                    for (let i = 0; i < 5; i++) {
+                        const sparkGeometry = new THREE.SphereGeometry(0.05, 8, 8);
+                        const sparkMaterial = new THREE.MeshBasicMaterial({
+                            color: Math.random() < 0.5 ? 0xff7700 : 0xffaa00,
+                            transparent: true,
+                            opacity: 1
+                        });
+                        
+                        const spark = new THREE.Mesh(sparkGeometry, sparkMaterial);
+                        spark.position.copy(explosionPos);
+                        
+                        // Random direction for sparks
+                        const angle = Math.random() * Math.PI * 2;
+                        const elevation = Math.random() * Math.PI;
+                        const speed = Math.random() * 2 + 2;
+                        
+                        spark.userData = {
+                            velocity: new THREE.Vector3(
+                                Math.cos(angle) * Math.sin(elevation) * speed,
+                                Math.cos(elevation) * speed,
+                                Math.sin(angle) * Math.sin(elevation) * speed
+                            ),
+                            rotationSpeed: (Math.random() - 0.5) * 0.1,
+                            lifespan: 0.5 + Math.random() * 0.5,
+                            creationTime: Date.now()
+                        };
+                        
+                        scene.add(spark);
+                        smokeParticles.push(spark);
+                    }
+                }
+            }, 800); // Check for secondary explosions every 800ms
+            
+            // Clear explosion interval after 10 seconds
+            setTimeout(() => {
+                clearInterval(explosionInterval);
+            }, 10000);
+        }
+
+        // New function for initial large explosion when tank loses
+        function createInitialExplosion(position) {
+            // Create a bright flash of light
+            const flash = new THREE.PointLight(0xffff00, 8, 5);
+            flash.position.copy(position);
+            scene.add(flash);
+            
+            // Create initial explosion mesh
+            const explosionGeometry = new THREE.SphereGeometry(0.4, 16, 16);
+            const explosionMaterial = new THREE.MeshBasicMaterial({
+                color: 0xffaa00,
+                transparent: true,
+                opacity: 1
+            });
+            const explosion = new THREE.Mesh(explosionGeometry, explosionMaterial);
+            explosion.position.copy(position);
+            scene.add(explosion);
+            
+            // Create lots of initial sparks and debris
+            for (let i = 0; i < 30; i++) {
+                const sparkGeometry = new THREE.SphereGeometry(0.07 + Math.random() * 0.05, 8, 8);
+                
+                // Mix of colors for more dramatic effect
+                const colorChoice = Math.random();
+                let sparkColor;
+                
+                if (colorChoice < 0.6) {
+                    // Orange/yellow spark
+                    sparkColor = new THREE.Color(
+                        0.9 + Math.random() * 0.1,  // Red
+                        0.5 + Math.random() * 0.3,  // Green
+                        0                           // Blue
+                    );
+                } else if (colorChoice < 0.9) {
+                    // White/yellow spark
+                    sparkColor = new THREE.Color(
+                        0.9 + Math.random() * 0.1,  // Red
+                        0.9 + Math.random() * 0.1,  // Green
+                        0.5 + Math.random() * 0.3   // Blue
+                    );
+                } else {
+                    // Occasional red spark
+                    sparkColor = new THREE.Color(
+                        0.9 + Math.random() * 0.1,  // Red
+                        0.1 + Math.random() * 0.1,  // Green
+                        0.1                         // Blue
+                    );
+                }
+                
+                const sparkMaterial = new THREE.MeshBasicMaterial({
+                    color: sparkColor,
+                    transparent: true,
+                    opacity: 1
+                });
+                
+                const spark = new THREE.Mesh(sparkGeometry, sparkMaterial);
+                spark.position.copy(position);
+                
+                // Random direction with higher velocity
+                const angle = Math.random() * Math.PI * 2;
+                const elevation = Math.random() * Math.PI;
+                const speed = Math.random() * 4 + 3;
+                
+                spark.userData = {
+                    velocity: new THREE.Vector3(
+                        Math.cos(angle) * Math.sin(elevation) * speed,
+                        Math.cos(elevation) * speed,
+                        Math.sin(angle) * Math.sin(elevation) * speed
+                    ),
+                    rotationSpeed: (Math.random() - 0.5) * 0.2,
+                    lifespan: 0.7 + Math.random() * 0.8,
+                    creationTime: Date.now()
+                };
+                
+                scene.add(spark);
+                smokeParticles.push(spark);
+            }
+            
+            // Create initial dark smoke burst
+            for (let i = 0; i < 20; i++) {
+                setTimeout(() => {
+                    const smokeSize = 0.2 + Math.random() * 0.3;
+                    const smokeGeometry = new THREE.SphereGeometry(smokeSize, 8, 8);
+                    const smokeMaterial = new THREE.MeshBasicMaterial({
+                        color: 0x222222,
+                        transparent: true,
+                        opacity: 0.9
+                    });
+                    
+                    const smoke = new THREE.Mesh(smokeGeometry, smokeMaterial);
+                    smoke.position.copy(position);
+                    smoke.position.x += (Math.random() - 0.5) * 0.5;
+                    smoke.position.y += (Math.random() - 0.5) * 0.5;
+                    smoke.position.z += (Math.random() - 0.5) * 0.5;
+                    
+                    smoke.userData = {
+                        velocity: new THREE.Vector3(
+                            (Math.random() - 0.5) * 1.0,
+                            Math.random() * 1.5 + 1.0,
+                            (Math.random() - 0.5) * 1.0
+                        ),
+                        rotationSpeed: (Math.random() - 0.5) * 0.03,
+                        lifespan: 3 + Math.random() * 2,
+                        creationTime: Date.now()
+                    };
+                    
+                    scene.add(smoke);
+                    smokeParticles.push(smoke);
+                }, i * 50);
+            }
+            
+            // Remove the flash and explosion after a short time
+            setTimeout(() => {
+                scene.remove(flash);
+                scene.remove(explosion);
+            }, 300);
+        }
+        
+        function createVictoryEffects(position) {
+            // Create victory fireworks effect - more spectacular
+            for (let i = 0; i < 25; i++) { // Increased from 20 to 25 fireworks
+                setTimeout(() => {
+                    // Randomize the firework type
+                    const fireworkType = Math.floor(Math.random() * 4); // 0-3 different types
+                    
+                    // Varied position offsets for more interesting distribution
+                    const offset = new THREE.Vector3(
+                        (Math.random() - 0.5) * 15,  // Wider spread
+                        5 + Math.random() * 8,       // Higher altitude
+                        (Math.random() - 0.5) * 8    // Deeper spread
+                    );
+                    const fireworkPosition = position.clone().add(offset);
+                    
+                    // Create colorful explosion
+                    const fireworkGroup = new THREE.Group();
+                    fireworkGroup.position.copy(fireworkPosition);
+                    fireworkGroup.userData.creationTime = Date.now();
+                    fireworkGroup.userData.duration = 2.0; // Longer duration
+                    fireworkGroup.userData.type = fireworkType; // Store type for animation
+                    
+                    // Generate a vibrant color - avoid dull colors
+                    let hue = Math.random();
+                    let saturation = 0.8 + Math.random() * 0.2; // High saturation
+                    let lightness = 0.5 + Math.random() * 0.3;  // Brighter
+                    const color = new THREE.Color().setHSL(hue, saturation, lightness);
+                    
+                    // Add brighter light with longer range
+                    const fireworkLight = new THREE.PointLight(color, 4, 8);
+                    fireworkLight.position.set(0, 0, 0);
+                    fireworkGroup.add(fireworkLight);
+                    
+                    // Create particles based on firework type
+                    const particleCount = fireworkType === 3 ? 50 : 30; // Special type has more particles
+                    
+                    for (let j = 0; j < particleCount; j++) {
+                        // Varied particle sizes
+                        const particleSize = (fireworkType === 2) 
+                            ? 0.08 + Math.random() * 0.12 // Varied sizes for type 2
+                            : 0.1;
+                        
+                        const particleGeometry = new THREE.SphereGeometry(particleSize, 8, 8);
+                        
+                        // For type 1, use complementary colors
+                        let particleColor;
+                        if (fireworkType === 1 && j % 3 === 0) {
+                            // Add some particles with complementary color
+                            particleColor = new THREE.Color().setHSL((hue + 0.5) % 1, saturation, lightness);
+                        } else {
+                            particleColor = color.clone();
+                        }
+                        
+                        const particleMaterial = new THREE.MeshBasicMaterial({
+                            color: particleColor,
+                            transparent: true,
+                            opacity: 1
+                        });
+                        
+                        const particle = new THREE.Mesh(particleGeometry, particleMaterial);
+                        
+                        // Different particle distribution based on type
+                        let direction;
+                        
+                        if (fireworkType === 0) {
+                            // Spherical distribution (classic firework)
+                            const theta = Math.random() * Math.PI * 2;
+                            const phi = Math.random() * Math.PI * 2;
+                            
+                            direction = new THREE.Vector3(
+                                Math.sin(phi) * Math.cos(theta),
+                                Math.sin(phi) * Math.sin(theta),
+                                Math.cos(phi)
+                            );
+                        } 
+                        else if (fireworkType === 1) {
+                            // Ring distribution (flat circular)
+                            const angle = (j / particleCount) * Math.PI * 2;
+                            const variance = (Math.random() - 0.5) * 0.2;
+                            
+                            direction = new THREE.Vector3(
+                                Math.cos(angle) + variance,
+                                (Math.random() - 0.5) * 0.3, // slight vertical variance
+                                Math.sin(angle) + variance
+                            );
+                        }
+                        else if (fireworkType === 2) {
+                            // Double sphere (two layers)
+                            const theta = Math.random() * Math.PI * 2;
+                            const phi = Math.random() * Math.PI * 2;
+                            const radius = (j % 2 === 0) ? 1 : 0.6;
+                            
+                            direction = new THREE.Vector3(
+                                radius * Math.sin(phi) * Math.cos(theta),
+                                radius * Math.sin(phi) * Math.sin(theta),
+                                radius * Math.cos(phi)
+                            );
+                        }
+                        else if (fireworkType === 3) {
+                            // Spiral pattern
+                            const angle = (j / particleCount) * Math.PI * 10; // Multiple rotations
+                            const height = ((j / particleCount) * 2) - 1; // -1 to 1
+                            const radius = 1 - Math.abs(height) * 0.5; // Thinner at edges
+                            
+                            direction = new THREE.Vector3(
+                                radius * Math.cos(angle),
+                                height,
+                                radius * Math.sin(angle)
+                            );
+                        }
+                        
+                        // Normalize and add some randomness
+                        direction.normalize().multiplyScalar(Math.random() * 0.5 + 1.5);
+                        
+                        // Store velocity for animation
+                        particle.userData.velocity = direction;
+                        particle.userData.rotationSpeed = Math.random() * 0.2;
+                        particle.userData.type = fireworkType;
+                        
+                        fireworkGroup.add(particle);
+                    }
+                    
+                    // Add trail particles that rise up before explosion
+                    if (i % 3 === 0) { // Only for some fireworks
+                        createFireworkTrail(position.clone(), fireworkPosition.clone(), color);
+                    }
+                    
+                    scene.add(fireworkGroup);
+                    explosionGroups.push(fireworkGroup);
+                    
+                }, i * 200 + Math.random() * 300); // Variable timing
+            }
+        }
+
+        // New function to create a trail for a rising firework
+        function createFireworkTrail(startPosition, endPosition, color) {
+            const trailDuration = 1.0; // 1 second to rise
+            const startTime = Date.now();
+            
+            // Create the rising firework
+            const rocketGeometry = new THREE.SphereGeometry(0.1, 8, 8);
+            const rocketMaterial = new THREE.MeshBasicMaterial({
+                color: color,
+                transparent: true,
+                opacity: 1
+            });
+            
+            const rocket = new THREE.Mesh(rocketGeometry, rocketMaterial);
+            rocket.position.copy(startPosition);
+            
+            // Add a small light
+            const rocketLight = new THREE.PointLight(color, 2, 3);
+            rocketLight.position.copy(startPosition);
+            
+            scene.add(rocket);
+            scene.add(rocketLight);
+            
+            // Calculate velocity vector
+            const velocity = new THREE.Vector3()
+                .subVectors(endPosition, startPosition)
+                .divideScalar(trailDuration); // Units per second
+            
+            // Start animation sequence
+            const trailInterval = setInterval(() => {
+                const elapsed = (Date.now() - startTime) / 1000;
+                
+                if (elapsed < trailDuration) {
+                    // Update position
+                    const newPos = new THREE.Vector3()
+                        .copy(startPosition)
+                        .add(velocity.clone().multiplyScalar(elapsed));
+                    
+                    rocket.position.copy(newPos);
+                    rocketLight.position.copy(newPos);
+                    
+                    // Create trail particles
+                    if (Math.random() > 0.5) {
+                        const trailGeometry = new THREE.SphereGeometry(0.05, 8, 8);
+                        const trailMaterial = new THREE.MeshBasicMaterial({
+                            color: color,
+                            transparent: true,
+                            opacity: 0.7
+                        });
+                        
+                        const trail = new THREE.Mesh(trailGeometry, trailMaterial);
+                        trail.position.copy(newPos);
+                        trail.position.x += (Math.random() - 0.5) * 0.1;
+                        trail.position.y += (Math.random() - 0.5) * 0.1;
+                        trail.position.z += (Math.random() - 0.5) * 0.1;
+                        
+                        trail.userData = {
+                            velocity: new THREE.Vector3(0, 0, 0),
+                            lifespan: 0.5,
+                            creationTime: Date.now(),
+                            fadeSpeed: 0.05
+                        };
+                        
+                        scene.add(trail);
+                        smokeParticles.push(trail);
+                    }
+                } else {
+                    // Animation complete, clean up
+                    clearInterval(trailInterval);
+                    scene.remove(rocket);
+                    scene.remove(rocketLight);
+                }
+            }, 16); // Approximately 60 FPS
+        }
+        
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            try {
+                const deltaTime = 1/60; // Fixed time step
+                const currentTime = Date.now();
+                
+                // Update the tank's position and orientation based on terrain - with safety checks
+                try {
+                    if (playerTank && computerTank && terrain) {
+                        updateTankPositions();
+                    }
+                } catch (posError) {
+                    console.error("Error in updateTankPositions:", posError);
+                }
+                
+                // Update cannon positions and orientations - with safety checks
+                try {
+                    if (playerTank && playerTank.userData && playerTank.userData.cannon &&
+                        computerTank && computerTank.userData && computerTank.userData.cannon) {
+                        updateCannons();
+                    }
+                } catch (cannonError) {
+                    console.error("Error in updateCannons:", cannonError);
+                }
+                
+                // Update cannonball physics - additional safety check
+                if (cannonball && cannonball.position) {
+                    try {
+                        updateCannonball(deltaTime);
+                        
+                        // Add cannonball trail effect in its own try-catch
+                        try {
+                            if (Math.random() > 0.6 && cannonball && cannonball.position) {
+                                createCannonballTrail(cannonball.position.clone());
+                            }
+                        } catch (trailError) {
+                            console.error("Error creating cannonball trail:", trailError);
+                            // Continue without trail if there's an error
+                        }
+                    } catch (ballError) {
+                        console.error("Error updating cannonball:", ballError);
+                        resetCannonball();
+                    }
+                } else if (cannonball && !cannonball.position) {
+                    // If cannonball exists but has no position, reset it
+                    console.warn("Cannonball exists but has no position property");
+                    resetCannonball();
+                }
+                
+                // Update explosion animations
+                updateExplosions(deltaTime, currentTime);
+                
+                // Update smoke and debris particles
+                updateParticles(deltaTime, currentTime);
+                
+                // Update controls
+                if (controls) {
+                    controls.update();
+                }
+                
+                // Render scene
+                if (scene && camera && renderer) {
+                    renderer.render(scene, camera);
+                }
+            } catch (error) {
+                console.error("Error in animation loop:", error);
+                // Don't stop the animation loop for recoverable errors
+            }
+        }
+
+        // New function to apply gravity to tanks
+        function applyTankGravity(tank, deltaTime) {
+            if (!tank || !terrain) return;
+            
+            // Get current tank position
+            const tankPosition = tank.position.clone();
+            
+            // Check terrain height at multiple points under the tank for better stability
+            // Check at four corners of the tank's base (approximate based on tank dimensions)
+            const halfWidth = 0.9;  // Half the tank width (1.8/2)
+            const halfLength = 0.6; // Half the tank length (1.2/2)
+            
+            const heightFrontLeft = getTerrainHeightAt(tankPosition.x - halfWidth, tankPosition.z - halfLength);
+            const heightFrontRight = getTerrainHeightAt(tankPosition.x + halfWidth, tankPosition.z - halfLength);
+            const heightBackLeft = getTerrainHeightAt(tankPosition.x - halfWidth, tankPosition.z + halfLength);
+            const heightBackRight = getTerrainHeightAt(tankPosition.x + halfWidth, tankPosition.z + halfLength);
+            
+            // Use the highest point for the terrain height to ensure tank rests on its lowest corner
+            const terrainHeight = Math.max(heightFrontLeft, heightFrontRight, heightBackLeft, heightBackRight);
+            
+            // Calculate the target position with the tank's base at terrain height
+            // Adding 0.5 as that appears to be the initial y-offset when creating the tanks
+            const targetHeight = terrainHeight + 0.5;
+            
+            // Calculate tilt angles based on terrain differences
+            // (Only applying subtle rotations to avoid physics oddities while maintaining visual effect)
+            const pitchAngle = Math.atan2(
+                (heightBackLeft + heightBackRight) / 2 - (heightFrontLeft + heightFrontRight) / 2, 
+                halfLength * 2
+            ) * 0.5; // Scale down angle for subtlety
+            
+            const rollAngle = Math.atan2(
+                (heightFrontRight + heightBackRight) / 2 - (heightFrontLeft + heightBackLeft) / 2,
+                halfWidth * 2
+            ) * 0.5; // Scale down angle for subtlety
+            
+            // Apply rotation to match terrain slope (smoothly)
+            const rotationSpeed = 3.0 * deltaTime; // Adjust rotation speed for smoothness
+            
+            // Smoothly adjust rotation to match terrain
+            tank.rotation.z = THREE.MathUtils.lerp(tank.rotation.z, rollAngle, rotationSpeed);
+            tank.rotation.x = THREE.MathUtils.lerp(tank.rotation.x, pitchAngle, rotationSpeed);
+            
+            // Check if tank is above the terrain
+            if (Math.abs(tankPosition.y - targetHeight) > 0.01) {
+                // Store current velocity in tank userData if it doesn't exist
+                if (!tank.userData.velocity) {
+                    tank.userData.velocity = 0;
+                }
+                
+                // Apply gravity to velocity with damping for smoother movement
+                tank.userData.velocity += gravity * deltaTime * 0.5; // Half gravity for smoother effect
+                
+                // Apply velocity to position (falling)
+                tank.position.y -= tank.userData.velocity * deltaTime;
+                
+                // Check if tank has reached or gone below target height
+                if (tank.position.y <= targetHeight) {
+                    // Stop at the ground
+                    tank.position.y = targetHeight;
+                    tank.userData.velocity = 0;
+                    
+                    // Add dust effect when tank lands from a significant height
+                    if (tank.userData.velocity > 1.0) {
+                        // Create dust cloud when tank lands
+                        createDenseSmoke(
+                            new THREE.Vector3(tankPosition.x, targetHeight, tankPosition.z), 
+                            10, // Number of particles
+                            0xAAAAAA, // Dust color
+                            1.5  // Duration
+                        );
+                    }
+                }
+                
+                // Update the cannon angle if this is the computer tank
+                if (tank === computerTank && !playerTurn) {
+                    // Recalculate angle to player since tank position has changed
+                    const angleToPlayer = calculateAngleToTarget(computerTank, playerTank.position);
+                    computerTank.userData.cannon.rotation.z = Math.PI + angleToPlayer;
+                }
+            } else {
+                // Tank is on the ground, reset velocity and ensure it's at the exact height
+                tank.position.y = targetHeight;
+                tank.userData.velocity = 0;
+            }
+        }
+
+        function createCannonballTrail(position) {
+            if (!position) {
+                console.warn("Attempted to create trail with null position");
+                return;
+            }
+            
+            try {
+                // Create a small trail particle behind the cannonball
+                const trailGeometry = new THREE.SphereGeometry(0.05 + Math.random() * 0.05, 8, 8);
+                const trailMaterial = new THREE.MeshBasicMaterial({
+                    color: 0x888888,
+                    transparent: true,
+                    opacity: 0.7
+                });
+                
+                const trail = new THREE.Mesh(trailGeometry, trailMaterial);
+                trail.position.copy(position);
+                
+                // Add some random variation to trail position
+                trail.position.x += (Math.random() - 0.5) * 0.05;
+                trail.position.y += (Math.random() - 0.5) * 0.05;
+                trail.position.z += (Math.random() - 0.5) * 0.05;
+                
+                // Store trail properties
+                trail.userData = {
+                    scale: Math.random() * 0.5 + 0.5,
+                    fadeSpeed: Math.random() * 0.03 + 0.02,
+                    lifespan: 0.5,
+                    creationTime: Date.now()
+                };
+                
+                scene.add(trail);
+                smokeParticles.push(trail);
+            } catch (error) {
+                console.error("Error in createCannonballTrail:", error);
+                // Continue without creating the trail
+            }
+        }
+
+        function updateExplosions(deltaTime, currentTime) {
+            // Update and animate explosion effects
+            for (let i = explosionGroups.length - 1; i >= 0; i--) {
+                const group = explosionGroups[i];
+                
+                // Safety check
+                if (!group || !group.userData || group.userData.creationTime === undefined || 
+                    group.userData.duration === undefined) {
+                    if (group) scene.remove(group);
+                    explosionGroups.splice(i, 1);
+                    continue;
+                }
+                
+                const elapsed = (currentTime - group.userData.creationTime) / 1000;
+                
+                if (elapsed < group.userData.duration) {
+                    // Scale up the core explosion then fade it
+                    const core = group.children.find(child => child instanceof THREE.Mesh);
+                    if (core && core.material) {
+                        // First half grows, second half shrinks
+                        if (elapsed < group.userData.duration / 2) {
+                            const scale = 1 + elapsed * 3;
+                            core.scale.set(scale, scale, scale);
+                        } else {
+                            const opacity = 1 - ((elapsed - group.userData.duration / 2) / (group.userData.duration / 2));
+                            core.material.opacity = opacity;
+                        }
+                    }
+                    
+                    // Update the explosion light intensity
+                    const light = group.children.find(child => child instanceof THREE.PointLight);
+                    if (light) {
+                        // Pulsating light effect for fireworks
+                        if (group.userData.type !== undefined) {
+                            // This is a firework
+                            const pulseFactor = 1 + 0.5 * Math.sin(elapsed * 15); // Fast pulsing
+                            light.intensity = 4 * (1 - elapsed / group.userData.duration) * pulseFactor;
+                            
+                            // Color changing effect for some firework types
+                            if (group.userData.type === 1 || group.userData.type === 3) {
+                                const hue = (elapsed * 0.5) % 1; // Cycle through colors
+                                light.color.setHSL(hue, 0.8, 0.5);
+                            }
+                        } else {
+                            // Normal explosion - regular fade
+                            light.intensity = 5 * (1 - elapsed / group.userData.duration);
+                        }
+                    }
+                    
+                    // Update particles with special animations based on firework type
+                    group.children.forEach(child => {
+                        if (child instanceof THREE.Mesh && child !== core) {
+                            if (child.userData && child.userData.velocity) {
+                                // Get type (if it's a firework)
+                                const particleType = child.userData.type !== undefined ? child.userData.type : -1;
+                                
+                                // Base movement for all particles
+                                const baseVelocity = child.userData.velocity.clone().multiplyScalar(deltaTime);
+                                
+                                // Apply special movement based on type
+                                if (particleType === 1) {
+                                    // Ring type - add oscillation
+                                    baseVelocity.y += Math.sin(elapsed * 10) * 0.02;
+                                } 
+                                else if (particleType === 2) {
+                                    // Double sphere - add spiraling
+                                    const rotSpeed = child.userData.rotationSpeed || 0.1;
+                                    const rotAngle = elapsed * rotSpeed * 10;
+                                    const radius = baseVelocity.length() * 0.1;
+                                    
+                                    baseVelocity.x += Math.cos(rotAngle) * radius;
+                                    baseVelocity.z += Math.sin(rotAngle) * radius;
+                                }
+                                else if (particleType === 3) {
+                                    // Spiral - add continuous rotation
+                                    const angle = elapsed * 5;
+                                    const originalLength = baseVelocity.length();
+                                    
+                                    // Rotate velocity vector around y-axis
+                                    const newX = baseVelocity.x * Math.cos(angle) - baseVelocity.z * Math.sin(angle);
+                                    const newZ = baseVelocity.x * Math.sin(angle) + baseVelocity.z * Math.cos(angle);
+                                    
+                                    baseVelocity.x = newX;
+                                    baseVelocity.z = newZ;
+                                }
+                                
+                                // Apply the calculated velocity
+                                child.position.add(baseVelocity);
+                                
+                                // Apply gravity - stronger for regular explosions, lighter for fireworks
+                                if (particleType >= 0) {
+                                    // Firework - lighter gravity
+                                    child.userData.velocity.y -= gravity * deltaTime * 0.1;
+                                } else {
+                                    // Regular explosion - normal gravity
+                                    child.userData.velocity.y -= gravity * deltaTime * 0.3;
+                                }
+                                
+                                // Apply rotation if specified
+                                if (child.userData.rotationSpeed) {
+                                    child.rotation.y += child.userData.rotationSpeed;
+                                    child.rotation.x += child.userData.rotationSpeed * 0.5;
+                                }
+                                
+                                // Fade out particles over time - with different patterns
+                                if (child.material) {
+                                    if (particleType >= 0) {
+                                        // Firework particles - more varied fading
+                                        const fadeStart = group.userData.duration * 0.2; // Start fading after 20% of duration
+                                        
+                                        if (elapsed > fadeStart) {
+                                            const fadeProgress = (elapsed - fadeStart) / (group.userData.duration - fadeStart);
+                                            child.material.opacity = Math.max(0, 1 - fadeProgress);
+                                            
+                                            // Particles fade out with twinkling effect
+                                            if (particleType === 3 || particleType === 1) {
+                                                child.material.opacity *= (0.7 + 0.3 * Math.sin(elapsed * 20 + child.position.x * 10));
+                                            }
+                                        }
+                                    } else {
+                                        // Regular explosion particles - normal fade
+                                        child.material.opacity = Math.max(0, 1 - (elapsed / group.userData.duration));
+                                    }
+                                    
+                                    // Scale particles differently based on type
+                                    let scale;
+                                    if (particleType === 0) {
+                                        // Classic firework - shrink gradually
+                                        scale = Math.max(0.1, 1 - (elapsed / group.userData.duration) * 0.7);
+                                    } 
+                                    else if (particleType === 1 || particleType === 3) {
+                                        // Ring and spiral - maintain size longer then shrink rapidly
+                                        scale = elapsed < (group.userData.duration * 0.7) ?
+                                            1 : 1 - ((elapsed - group.userData.duration * 0.7) / (group.userData.duration * 0.3));
+                                    }
+                                    else if (particleType === 2) {
+                                        // Double sphere - pulsate slightly
+                                        scale = Math.max(0.1, 1 - (elapsed / group.userData.duration) * 0.5);
+                                        scale *= (0.8 + 0.2 * Math.sin(elapsed * 15 + child.position.y * 5));
+                                    }
+                                    else {
+                                        // Regular explosion particles
+                                        scale = Math.max(0.1, 1 - (elapsed / group.userData.duration) * 0.5);
+                                    }
+                                    
+                                    child.scale.set(scale, scale, scale);
+                                }
+                            }
+                        }
+                    });
+                } else {
+                    // Remove expired explosion group
+                    scene.remove(group);
+                    explosionGroups.splice(i, 1);
+                }
+            }
+        }
+
+        function updateParticles(deltaTime, currentTime) {
+            // Update smoke and debris particles
+            for (let i = smokeParticles.length - 1; i >= 0; i--) {
+                const particle = smokeParticles[i];
+                
+                // Safety check - skip particles that don't have necessary data
+                if (!particle || !particle.userData || !particle.position) {
+                    // Remove invalid particle
+                    if (particle) scene.remove(particle);
+                    smokeParticles.splice(i, 1);
+                    continue;
+                }
+                
+                // Check for missing creationTime or lifespan
+                if (particle.userData.creationTime === undefined || particle.userData.lifespan === undefined) {
+                    scene.remove(particle);
+                    smokeParticles.splice(i, 1);
+                    continue;
+                }
+                
+                const elapsed = (currentTime - particle.userData.creationTime) / 1000;
+                
+                if (elapsed < particle.userData.lifespan) {
+                    // Ensure velocity exists before using it
+                    if (!particle.userData.velocity) {
+                        particle.userData.velocity = { x: 0, y: 0, z: 0 };
+                    }
+                    
+                    // Update position based on velocity
+                    particle.position.x += particle.userData.velocity.x * deltaTime;
+                    particle.position.y += particle.userData.velocity.y * deltaTime;
+                    particle.position.z += particle.userData.velocity.z * deltaTime;
+                    
+                    // Apply gravity to debris but not to smoke
+                    if (particle.geometry instanceof THREE.BoxGeometry) {
+                        particle.userData.velocity.y -= gravity * deltaTime;
+                        
+                        // Check for rotation properties before applying
+                        if (particle.userData.rotationSpeed) {
+                            particle.rotation.x += particle.userData.rotationSpeed.x || 0;
+                            particle.rotation.y += particle.userData.rotationSpeed.y || 0;
+                            particle.rotation.z += particle.userData.rotationSpeed.z || 0;
+                        }
+                        
+                        // Check for collision with terrain for debris
+                        const terrainHeight = getTerrainHeightAt(particle.position.x, particle.position.z);
+                        if (particle.position.y < terrainHeight) {
+                            particle.position.y = terrainHeight;
+                            particle.userData.velocity.y = -particle.userData.velocity.y * 0.3; // Bounce with damping
+                            particle.userData.velocity.x *= 0.8; // Friction
+                            particle.userData.velocity.z *= 0.8; // Friction
+                        }
+                    } else {
+                        // For smoke, gradually slow down
+                        particle.userData.velocity.x *= 0.99;
+                        particle.userData.velocity.y *= 0.99;
+                        particle.userData.velocity.z *= 0.99;
+                        
+                        // For trail particles, fade out more quickly (ensure material exists)
+                        if (particle.material && particle.geometry && particle.geometry.parameters && 
+                            particle.geometry.parameters.radius < 0.1) {
+                            if (particle.userData.fadeSpeed) {
+                                particle.material.opacity -= particle.userData.fadeSpeed;
+                            } else {
+                                particle.material.opacity = Math.max(0, particle.material.opacity - 0.02);
+                            }
+                            
+                            const scale = (particle.userData.scale || 1) * (1 - elapsed / particle.userData.lifespan);
+                            particle.scale.set(scale, scale, scale);
+                        } else if (particle.material) {
+                            // Check for fadeDelay property
+                            const fadeDelay = particle.userData.fadeDelay || 0;
+                            
+                            // Only start fading after the delay
+                            if (elapsed > fadeDelay) {
+                                // Calculate fade factor based on remaining time after delay
+                                const fadeElapsed = elapsed - fadeDelay;
+                                const fadeDuration = particle.userData.lifespan - fadeDelay;
+                                const fadeFactor = Math.min(1, fadeElapsed / fadeDuration);
+                                
+                                // Apply a more gradual fade out for dense smoke
+                                if (particle.geometry.parameters.radius > 0.2) {
+                                    // This is our dense smoke - fade more slowly
+                                    particle.material.opacity = Math.max(0, particle.material.opacity - 0.005);
+                                    
+                                    // Gradually increase size of smoke for more dramatic effect
+                                    const smokeScale = 1 + elapsed * 0.3;
+                                    particle.scale.set(smokeScale, smokeScale, smokeScale);
+                                } else {
+                                    // Regular smoke behavior
+                                    particle.material.opacity = Math.max(0, particle.material.opacity - 0.01);
+                                    
+                                    // Gradually increase size of smoke
+                                    const smokeScale = 1 + elapsed * 0.5;
+                                    particle.scale.set(smokeScale, smokeScale, smokeScale);
+                                }
+                            } else {
+                                // Before fadeDelay, slowly increase size without fading
+                                const earlyScale = 1 + elapsed * 0.2;
+                                particle.scale.set(earlyScale, earlyScale, earlyScale);
+                            }
+                        }
+                    }
+                } else {
+                    // Remove expired particle
+                    scene.remove(particle);
+                    smokeParticles.splice(i, 1);
+                }
+            }
+        }
+
+        // New function to create a health bar for a tank
+        function createHealthBar(tank) {
+            // Create container group for health bar
+            const healthBarGroup = new THREE.Group();
+            healthBarGroup.name = "healthBar";
+            
+            // Create background bar (gray)
+            const bgBarGeometry = new THREE.BoxGeometry(1.5, 0.15, 0.05);
+            const bgBarMaterial = new THREE.MeshBasicMaterial({ color: 0x444444 });
+            const bgBar = new THREE.Mesh(bgBarGeometry, bgBarMaterial);
+            healthBarGroup.add(bgBar);
+            
+            // Create foreground bar (colored based on tank)
+            const fgBarGeometry = new THREE.BoxGeometry(1.5, 0.15, 0.06);
+            const barColor = tank.userData.isPlayer ? 0x00ff00 : 0xff3333; // Green for player, red for computer
+            const fgBarMaterial = new THREE.MeshBasicMaterial({ color: barColor });
+            const fgBar = new THREE.Mesh(fgBarGeometry, fgBarMaterial);
+            fgBar.name = "healthFill";
+            
+            // Set the origin to left side for easier scaling
+            fgBar.position.x = 0;
+            fgBarGeometry.translate(0.75, 0, 0);
+            
+            healthBarGroup.add(fgBar);
+            
+            // Position health bar above tank
+            healthBarGroup.position.set(0, 1.3, 0);
+            
+            // Add health bar to tank
+            tank.add(healthBarGroup);
+            tank.userData.healthBar = healthBarGroup;
+            
+            // Update health bar to show current health
+            updateHealthBar(tank);
+        }
+
+        // New function to update health bar appearance
+        function updateHealthBar(tank) {
+            if (!tank || !tank.userData || !tank.userData.healthBar) return;
+            
+            const healthPercent = tank.userData.health / MAX_HEALTH;
+            const healthFill = tank.userData.healthBar.getObjectByName("healthFill");
+            
+            if (healthFill) {
+                // Scale health bar fill based on current health
+                healthFill.scale.x = healthPercent;
+                
+                // Update color of health bar based on health percentage
+                if (healthPercent > 0.6) {
+                    // Healthy - green
+                    healthFill.material.color.set(tank.userData.isPlayer ? 0x00ff00 : 0xff3333);
+                } else if (healthPercent > 0.3) {
+                    // Medium health - yellow/orange
+                    healthFill.material.color.set(tank.userData.isPlayer ? 0xffff00 : 0xff7700);
+                } else {
+                    // Low health - red/critical
+                    healthFill.material.color.set(tank.userData.isPlayer ? 0xff0000 : 0xff0000);
+                }
+            }
+        }
+
+        // Add updateUIHealthBars function
+        function updateUIHealthBars() {
+            // Update player health bar
+            const playerHealthBar = document.getElementById('player-health-bar');
+            const playerHealthText = document.getElementById('player-health-text');
+            const playerHealthPercent = (playerTank.userData.health / MAX_HEALTH) * 100;
+            
+            if (playerHealthBar) {
+                playerHealthBar.style.width = playerHealthPercent + '%';
+                
+                // Change color based on health level
+                if (playerHealthPercent > 60) {
+                    playerHealthBar.style.background = 'linear-gradient(to right, #00ff00, #007700)';
+                } else if (playerHealthPercent > 30) {
+                    playerHealthBar.style.background = 'linear-gradient(to right, #ffff00, #aaaa00)';
+                } else {
+                    playerHealthBar.style.background = 'linear-gradient(to right, #ff0000, #aa0000)';
+                }
+            }
+            
+            if (playerHealthText) {
+                playerHealthText.textContent = Math.round(playerHealthPercent) + '%';
+            }
+            
+            // Update computer health bar
+            const computerHealthBar = document.getElementById('computer-health-bar');
+            const computerHealthText = document.getElementById('computer-health-text');
+            const computerHealthPercent = (computerTank.userData.health / MAX_HEALTH) * 100;
+            
+            if (computerHealthBar) {
+                computerHealthBar.style.width = computerHealthPercent + '%';
+                
+                // Change color based on health level
+                if (computerHealthPercent > 60) {
+                    computerHealthBar.style.background = 'linear-gradient(to right, #ff3333, #aa0000)';
+                } else if (computerHealthPercent > 30) {
+                    computerHealthBar.style.background = 'linear-gradient(to right, #ff7700, #aa5500)';
+                } else {
+                    computerHealthBar.style.background = 'linear-gradient(to right, #ff0000, #aa0000)';
+                }
+            }
+            
+            if (computerHealthText) {
+                computerHealthText.textContent = Math.round(computerHealthPercent) + '%';
+            }
+        }
+
+        // Initialize powerups display when the game starts
+        document.addEventListener('DOMContentLoaded', function() {
+            updatePowerupsDisplay();
+        });
+
+        function updateCannons() {
+            // Safety check - if any required object is missing, just return
+            if (!playerTank || !computerTank || !playerTank.userData || !playerTank.userData.cannon) {
+                return;
+            }
+            
+            try {
+                // Update player cannon based on angle slider and tank rotation
+                const playerAngle = parseInt(document.getElementById('angle-control').value);
+                const playerAngleRad = THREE.MathUtils.degToRad(playerAngle);
+                
+                // Set the cannon's rotation and position
+                if (playerTank.userData && playerTank.userData.cannon) {
+                    // Calculate the cannon's length (half the cylinder length since pivot is in center)
+                    const cannonLength = 0.6; // Half of the 1.2 total length
+                    
+                    // Set base position for the cannon pivot point (at the turret)
+                    const baseX = 0.6;
+                    const baseY = 0.6;
+                    const baseZ = -0.4;
+                    
+                    // Calculate offset needed to keep the cannon's base at the pivot point
+                    // This is the key to making it rotate from the end rather than the center
+                    const offsetX = cannonLength * Math.cos(playerAngleRad);
+                    const offsetY = cannonLength * Math.sin(playerAngleRad);
+                    
+                    // Apply rotation (add PI/2 to account for the initial 90-degree rotation)
+                    playerTank.userData.cannon.rotation.z = Math.PI / 2 + playerAngleRad;
+                    
+                    // Position cannon with the calculated offset to simulate pivot from base
+                    playerTank.userData.cannon.position.set(
+                        baseX + offsetX,
+                        baseY + offsetY,
+                        baseZ
+                    );
+                }
+                
+                // For computer tank
+                if (computerTank && computerTank.userData && computerTank.userData.cannon) {
+                    // If it's the computer's turn, adjust aim toward player
+                    let computerAngle = 20; // Default angle
+                    
+                    if (!playerTurn && playerTank && playerTank.position && computerTank.position) {
+                        // Calculate horizontal direction and distance to player
+                        const toPlayer = playerTank.position.clone().sub(computerTank.position);
+                        const horizontalDist = Math.sqrt(toPlayer.x * toPlayer.x + toPlayer.z * toPlayer.z);
+                        
+                        // Calculate vertical angle needed (simple ballistic math)
+                        const heightDiff = playerTank.position.y - computerTank.position.y;
+                        const gravity = 9.8;
+                        const power = document.getElementById('power-control').value / 5;
+                        
+                        // Calculate angle for a ballistic trajectory
+                        computerAngle = calculateFiringAngle(horizontalDist, heightDiff, power, gravity);
+                        
+                        // Ensure we have a valid angle
+                        if (isNaN(computerAngle) || computerAngle < 0) {
+                            computerAngle = 30; // Fallback angle if calculation fails
+                        }
+                        
+                        // Clamp angle between 0 and 90 degrees
+                        computerAngle = Math.max(0, Math.min(90, computerAngle));
+                    }
+                    
+                    // Convert to radians
+                    const computerAngleRad = THREE.MathUtils.degToRad(computerAngle);
+                    
+                    // Calculate the cannon's length (half the cylinder length since pivot is in center)
+                    const cannonLength = 0.6; // Half of the 1.2 total length
+                    
+                    // Set base position for the cannon pivot point (at the turret)
+                    const baseX = 0.8;
+                    const baseY = 0.8;
+                    const baseZ = -0.2;
+                    
+                    // For computer tank, angles work in the opposite direction
+                    // Use negative angle for position calculation to match the rotation
+                    const offsetX = cannonLength * Math.cos(-computerAngleRad);
+                    const offsetY = cannonLength * Math.sin(-computerAngleRad);
+                    
+                    // Apply rotation (add PI/2 to account for the initial 90-degree rotation)
+                    // Add PI (180 degrees) because computer tank faces opposite direction
+                    // Subtract the angle for the computer tank (rather than adding it)
+                    computerTank.userData.cannon.rotation.z = Math.PI / 2 + Math.PI - computerAngleRad;
+                    
+                    // Position cannon with the calculated offset
+                    computerTank.userData.cannon.position.set(
+                        baseX + offsetX,
+                        baseY + offsetY,
+                        baseZ
+                    );
+                }
+            } catch (error) {
+                console.error("Error in updateCannons:", error);
+                // Continue gracefully
+            }
+        }
+
+        // Helper function to calculate firing angle
+        function calculateFiringAngle(distance, heightDifference, velocity, gravity) {
+            // Calculate the angle required to hit a target at the given distance and height difference
+            // Using the projectile motion equation
+            const v2 = velocity * velocity;
+            const term = v2 * v2 - gravity * (gravity * distance * distance + 2 * heightDifference * v2);
+            
+            if (term < 0) {
+                // No solution exists (target is too far for given velocity)
+                return 45; // Return a reasonable default
+            }
+            
+            // Calculate the two possible angles
+            const angle1 = Math.atan((v2 + Math.sqrt(term)) / (gravity * distance));
+            const angle2 = Math.atan((v2 - Math.sqrt(term)) / (gravity * distance));
+            
+            // Convert from radians to degrees
+            const angleDeg1 = THREE.MathUtils.radToDeg(angle1);
+            const angleDeg2 = THREE.MathUtils.radToDeg(angle2);
+            
+            // Choose the lower angle if valid, otherwise use the higher one
+            return (angleDeg1 > 0 && angleDeg1 < 90) ? angleDeg1 : angleDeg2;
+        }
+
+        function updateTankPositions() {
+            // Safety check - if any required object is missing, just return
+            if (!playerTank || !computerTank || !terrain) {
+                return;
+            }
+            
+            // Check if the playerTank and its position exist
+            if (playerTank && playerTank.position && terrain) {
+                // Apply gravity to make tanks follow terrain
+                const deltaTime = 1/60; // Fixed time step
+                applyTankGravity(playerTank, deltaTime);
+                
+                // Cannon position is handled in updateCannons to maintain the proper pivot point
+            }
+            
+            // Check if the computerTank and its position exist
+            if (computerTank && computerTank.position && terrain) {
+                // Apply gravity to computer tank
+                const deltaTime = 1/60; // Fixed time step
+                applyTankGravity(computerTank, deltaTime);
+                
+                // Cannon position is handled in updateCannons to maintain the proper pivot point
+            }
+        }
+
+        function computerTakeTurn() {
+            if (!playerTurn && playerTank && computerTank) {
+                // Calculate vector from computer to player
+                const toPlayer = new THREE.Vector3(
+                    playerTank.position.x - computerTank.position.x,
+                    0, // Ignore height difference for horizontal angle
+                    playerTank.position.z - computerTank.position.z
+                );
+                
+                // Calculate horizontal angle to player (in radians)
+                const horizontalAngle = Math.atan2(toPlayer.z, toPlayer.x);
+                
+                // Rotate computer tank to face the player
+                computerTank.rotation.y = horizontalAngle - Math.PI; // Subtract PI to face toward player
+                
+                // Calculate horizontal distance for the vertical angle calculation
+                const horizontalDist = Math.sqrt(toPlayer.x * toPlayer.x + toPlayer.z * toPlayer.z);
+                
+                // Add a small random offset to make computer less perfect
+                const distance = horizontalDist * (1 + (Math.random() * 0.1 - 0.05)); // ±5% variation
+                
+                // Calculate height difference
+                const heightDiff = playerTank.position.y - computerTank.position.y;
+                
+                // Pick a random power level between 50-90%
+                const power = 50 + Math.floor(Math.random() * 40);
+                document.getElementById('power-control').value = power;
+                document.getElementById('power-value').textContent = power;
+                
+                // Calculate firing angle
+                const scaledPower = power / 5; // match the scaling in fireCannon
+                const calculatedAngle = calculateFiringAngle(distance, heightDiff, scaledPower, 9.8);
+                
+                // Make sure we have a valid angle (fallback to 45 degrees if calculation fails)
+                const finalAngle = (isNaN(calculatedAngle) || calculatedAngle < 0 || calculatedAngle > 90) ? 
+                    45 : calculatedAngle;
+                
+                // Set angle slider and value
+                document.getElementById('angle-control').value = finalAngle;
+                document.getElementById('angle-value').textContent = finalAngle + '°';
+                
+                // Delay firing to make the game feel more natural
+                setTimeout(() => {
+                    fireCannon();
+                }, 1500);
+            }
+        }
+    </script>
+</body>
+</html> 
