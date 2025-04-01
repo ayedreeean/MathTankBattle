@@ -1052,6 +1052,9 @@
                 }, i * 20);
             }
             
+            // Create smoke ring effect
+            createSmokeRing(cannonWorldPos, worldDirection);
+            
             // Shake the camera - REMOVED to keep shake only on collisions
             // cameraShake(0.3, 300);
             
@@ -1338,7 +1341,8 @@
                         (Math.random() - 0.5) * 0.2
                     ),
                     lifespan: 2.5 + Math.random() * 1.5, // Longer lifespan
-                    creationTime: Date.now()
+                    creationTime: Date.now(),
+                    isWoodChunk: true // Flag for special handling in updateParticles
                 };
                 
                 debris.castShadow = true;
@@ -1635,7 +1639,73 @@
                 }, i * 30); // Stagger the creation for a more dynamic effect
             }
         }
-        
+
+        // New function to create a smoke ring effect from the cannon
+        function createSmokeRing(position, direction, radius = 0.3, particleCount = 15, color = 0x888888) {
+            // Create a ring of smoke particles perpendicular to the firing direction
+            const ringGroup = new THREE.Group();
+            ringGroup.position.copy(position);
+            
+            // Create a quaternion to rotate the ring to face the direction of firing
+            const rotationQuat = new THREE.Quaternion();
+            rotationQuat.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction.clone().normalize());
+            ringGroup.quaternion.copy(rotationQuat);
+            
+            // Create particles arranged in a circle
+            for (let i = 0; i < particleCount; i++) {
+                const angle = (i / particleCount) * Math.PI * 2;
+                
+                // Calculate position on the ring
+                const x = Math.cos(angle) * radius;
+                const y = 0; // Ring is flat (perpendicular to direction)
+                const z = Math.sin(angle) * radius;
+                
+                // Create smoke particle
+                const size = 0.08 + Math.random() * 0.08;
+                const smokeGeometry = new THREE.SphereGeometry(size, 8, 8);
+                const smokeMaterial = new THREE.MeshBasicMaterial({
+                    color: color,
+                    transparent: true,
+                    opacity: 0.7 + Math.random() * 0.3
+                });
+                
+                const particle = new THREE.Mesh(smokeGeometry, smokeMaterial);
+                particle.position.set(x, y, z);
+                
+                // Add particle to the ring group
+                ringGroup.add(particle);
+                
+                // Use quaternion to transform from local to world space
+                const worldPos = particle.getWorldPosition(new THREE.Vector3());
+                
+                // Remove from ring group and add directly to scene for independent movement
+                ringGroup.remove(particle);
+                particle.position.copy(worldPos);
+                scene.add(particle);
+                
+                // Create outward velocity (radial expansion) plus forward movement
+                const radialVelocity = new THREE.Vector3(x, y, z).normalize().multiplyScalar(0.8 + Math.random() * 0.5);
+                
+                // Add properties for animation
+                particle.userData = {
+                    velocity: new THREE.Vector3(
+                        radialVelocity.x + direction.x * (0.2 + Math.random() * 0.3),
+                        radialVelocity.y + direction.y * (0.2 + Math.random() * 0.3),
+                        radialVelocity.z + direction.z * (0.2 + Math.random() * 0.3)
+                    ),
+                    rotationSpeed: (Math.random() - 0.5) * 0.02,
+                    lifespan: 1.0 + Math.random() * 0.5,
+                    creationTime: Date.now(),
+                    type: 'ring' // Used to identify ring particles for special animation
+                };
+                
+                smokeParticles.push(particle);
+            }
+            
+            // No need to keep the empty group
+            scene.remove(ringGroup);
+        }
+
         function resetCannonball() {
             if (cannonball) {
                 scene.remove(cannonball);
@@ -1753,6 +1823,64 @@
                 cannonball.position.copy(cannonWorldPos);
                 
                 scene.add(cannonball);
+                
+                // Create muzzle flash and smoke effects for computer's cannon too
+                // Muzzle flash
+                const muzzleFlashGeometry = new THREE.SphereGeometry(0.3, 16, 16);
+                const muzzleFlashMaterial = new THREE.MeshBasicMaterial({
+                    color: 0xffff00,
+                    transparent: true,
+                    opacity: 1
+                });
+                const muzzleFlash = new THREE.Mesh(muzzleFlashGeometry, muzzleFlashMaterial);
+                muzzleFlash.position.copy(cannonWorldPos);
+                scene.add(muzzleFlash);
+                
+                // Add a point light for the muzzle flash
+                const flashLight = new THREE.PointLight(0xffff00, 2, 3);
+                flashLight.position.copy(cannonWorldPos);
+                scene.add(flashLight);
+                
+                // Fade out muzzle flash
+                setTimeout(() => {
+                    scene.remove(muzzleFlash);
+                    scene.remove(flashLight);
+                }, 100);
+                
+                // Create smoke ring for computer's cannon
+                createSmokeRing(cannonWorldPos, direction);
+                
+                // Create regular smoke particles
+                for (let i = 0; i < 10; i++) {
+                    setTimeout(() => {
+                        const smokeGeometry = new THREE.SphereGeometry(0.1 + Math.random() * 0.1, 8, 8);
+                        const smokeMaterial = new THREE.MeshBasicMaterial({
+                            color: 0x888888,
+                            transparent: true,
+                            opacity: 0.7
+                        });
+                        
+                        const smoke = new THREE.Mesh(smokeGeometry, smokeMaterial);
+                        smoke.position.copy(cannonWorldPos);
+                        smoke.position.x += (Math.random() - 0.5) * 0.2;
+                        smoke.position.y += (Math.random() - 0.5) * 0.2;
+                        smoke.position.z += (Math.random() - 0.5) * 0.2;
+                        
+                        smoke.userData = {
+                            velocity: new THREE.Vector3(
+                                direction.x * (Math.random() * 0.5 + 0.5),
+                                direction.y * (Math.random() * 0.5 + 0.5) + Math.random() * 0.5,
+                                direction.z * (Math.random() * 0.5 + 0.5)
+                            ),
+                            rotationSpeed: (Math.random() - 0.5) * 0.01,
+                            lifespan: 1 + Math.random(),
+                            creationTime: Date.now()
+                        };
+                        
+                        scene.add(smoke);
+                        smokeParticles.push(smoke);
+                    }, i * 20);
+                }
                 
                 // Shake camera - REMOVED to keep shake only on collisions
                 // cameraShake(0.2, 300);
@@ -2776,8 +2904,62 @@
                     particle.position.y += particle.userData.velocity.y * deltaTime;
                     particle.position.z += particle.userData.velocity.z * deltaTime;
                     
+                    // Special handling for wood chunks from tree destruction
+                    if (particle.userData.isWoodChunk) {
+                        // Apply gravity
+                        particle.userData.velocity.y -= gravity * deltaTime;
+                        
+                        // Apply rotation with proper rotation speed
+                        if (particle.userData.rotationSpeed) {
+                            particle.rotation.x += particle.userData.rotationSpeed.x * deltaTime * 10;
+                            particle.rotation.y += particle.userData.rotationSpeed.y * deltaTime * 10;
+                            particle.rotation.z += particle.userData.rotationSpeed.z * deltaTime * 10;
+                        }
+                        
+                        // Check for collision with terrain
+                        const terrainHeight = getTerrainHeightAt(particle.position.x, particle.position.z);
+                        if (particle.position.y < terrainHeight) {
+                            // Position just above terrain
+                            particle.position.y = terrainHeight;
+                            
+                            // Bounce with energy loss
+                            particle.userData.velocity.y = -particle.userData.velocity.y * 0.4;
+                            
+                            // Apply ground friction
+                            particle.userData.velocity.x *= 0.7;
+                            particle.userData.velocity.z *= 0.7;
+                            
+                            // If chunk has nearly stopped, make it come to rest
+                            const horizontalSpeed = Math.sqrt(
+                                particle.userData.velocity.x * particle.userData.velocity.x + 
+                                particle.userData.velocity.z * particle.userData.velocity.z
+                            );
+                            
+                            if (Math.abs(particle.userData.velocity.y) < 0.5 && horizontalSpeed < 0.5) {
+                                particle.userData.velocity.x = 0;
+                                particle.userData.velocity.y = 0;
+                                particle.userData.velocity.z = 0;
+                                
+                                // Let chunks fade out when they come to rest
+                                if (particle.material && !particle.userData.startedFading) {
+                                    particle.userData.startedFading = true;
+                                    particle.userData.fadeStartTime = Date.now();
+                                    particle.userData.lifespan = Math.min(
+                                        particle.userData.lifespan,
+                                        elapsed + 1.5 // Additional 1.5 seconds to fade out
+                                    );
+                                }
+                            }
+                        }
+                        
+                        // Apply fading for wood chunks that have started fading
+                        if (particle.material && particle.userData.startedFading) {
+                            const fadeElapsed = (Date.now() - particle.userData.fadeStartTime) / 1000;
+                            particle.material.opacity = Math.max(0, 1 - fadeElapsed / 1.5);
+                        }
+                    }
                     // Apply gravity to debris but not to smoke
-                    if (particle.geometry instanceof THREE.BoxGeometry) {
+                    else if (particle.geometry instanceof THREE.BoxGeometry) {
                         particle.userData.velocity.y -= gravity * deltaTime;
                         
                         // Check for rotation properties before applying
@@ -2796,53 +2978,72 @@
                             particle.userData.velocity.z *= 0.8; // Friction
                         }
                     } else {
-                        // For smoke, gradually slow down
-                        particle.userData.velocity.x *= 0.99;
-                        particle.userData.velocity.y *= 0.99;
-                        particle.userData.velocity.z *= 0.99;
-                        
-                        // For trail particles, fade out more quickly (ensure material exists)
-                        if (particle.material && particle.geometry && particle.geometry.parameters && 
-                            particle.geometry.parameters.radius < 0.1) {
-                            if (particle.userData.fadeSpeed) {
-                                particle.material.opacity -= particle.userData.fadeSpeed;
-                            } else {
-                                particle.material.opacity = Math.max(0, particle.material.opacity - 0.02);
-                            }
+                        // Special handling for smoke ring particles
+                        if (particle.userData.type === 'ring') {
+                            // Ring particles expand outward more quickly
+                            particle.userData.velocity.x *= 1.02;
+                            particle.userData.velocity.y *= 1.02;
+                            particle.userData.velocity.z *= 1.02;
                             
-                            const scale = (particle.userData.scale || 1) * (1 - elapsed / particle.userData.lifespan);
-                            particle.scale.set(scale, scale, scale);
-                        } else if (particle.material) {
-                            // Check for fadeDelay property
-                            const fadeDelay = particle.userData.fadeDelay || 0;
-                            
-                            // Only start fading after the delay
-                            if (elapsed > fadeDelay) {
-                                // Calculate fade factor based on remaining time after delay
-                                const fadeElapsed = elapsed - fadeDelay;
-                                const fadeDuration = particle.userData.lifespan - fadeDelay;
-                                const fadeFactor = Math.min(1, fadeElapsed / fadeDuration);
+                            // Ring particles fade faster
+                            if (particle.material) {
+                                // More dramatic opacity fade for ring particles
+                                const ringOpacity = 1 - (elapsed / particle.userData.lifespan) * 1.5;
+                                particle.material.opacity = Math.max(0, ringOpacity);
                                 
-                                // Apply a more gradual fade out for dense smoke
-                                if (particle.geometry.parameters.radius > 0.2) {
-                                    // This is our dense smoke - fade more slowly
-                                    particle.material.opacity = Math.max(0, particle.material.opacity - 0.005);
-                                    
-                                    // Gradually increase size of smoke for more dramatic effect
-                                    const smokeScale = 1 + elapsed * 0.3;
-                                    particle.scale.set(smokeScale, smokeScale, smokeScale);
+                                // Scale up slightly as they dissipate
+                                const ringScale = 1 + elapsed * 0.8; // More expansion than regular smoke
+                                particle.scale.set(ringScale, ringScale, ringScale);
+                            }
+                        } else {
+                            // For regular smoke, gradually slow down
+                            particle.userData.velocity.x *= 0.99;
+                            particle.userData.velocity.y *= 0.99;
+                            particle.userData.velocity.z *= 0.99;
+                            
+                            // For trail particles, fade out more quickly (ensure material exists)
+                            if (particle.material && particle.geometry && particle.geometry.parameters && 
+                                particle.geometry.parameters.radius < 0.1) {
+                                if (particle.userData.fadeSpeed) {
+                                    particle.material.opacity -= particle.userData.fadeSpeed;
                                 } else {
-                                    // Regular smoke behavior
-                                    particle.material.opacity = Math.max(0, particle.material.opacity - 0.01);
-                                    
-                                    // Gradually increase size of smoke
-                                    const smokeScale = 1 + elapsed * 0.5;
-                                    particle.scale.set(smokeScale, smokeScale, smokeScale);
+                                    particle.material.opacity = Math.max(0, particle.material.opacity - 0.02);
                                 }
-                            } else {
-                                // Before fadeDelay, slowly increase size without fading
-                                const earlyScale = 1 + elapsed * 0.2;
-                                particle.scale.set(earlyScale, earlyScale, earlyScale);
+                                
+                                const scale = (particle.userData.scale || 1) * (1 - elapsed / particle.userData.lifespan);
+                                particle.scale.set(scale, scale, scale);
+                            } else if (particle.material) {
+                                // Check for fadeDelay property
+                                const fadeDelay = particle.userData.fadeDelay || 0;
+                                
+                                // Only start fading after the delay
+                                if (elapsed > fadeDelay) {
+                                    // Calculate fade factor based on remaining time after delay
+                                    const fadeElapsed = elapsed - fadeDelay;
+                                    const fadeDuration = particle.userData.lifespan - fadeDelay;
+                                    const fadeFactor = Math.min(1, fadeElapsed / fadeDuration);
+                                    
+                                    // Apply a more gradual fade out for dense smoke
+                                    if (particle.geometry.parameters.radius > 0.2) {
+                                        // This is our dense smoke - fade more slowly
+                                        particle.material.opacity = Math.max(0, particle.material.opacity - 0.005);
+                                        
+                                        // Gradually increase size of smoke for more dramatic effect
+                                        const smokeScale = 1 + elapsed * 0.3;
+                                        particle.scale.set(smokeScale, smokeScale, smokeScale);
+                                    } else {
+                                        // Regular smoke behavior
+                                        particle.material.opacity = Math.max(0, particle.material.opacity - 0.01);
+                                        
+                                        // Gradually increase size of smoke
+                                        const smokeScale = 1 + elapsed * 0.5;
+                                        particle.scale.set(smokeScale, smokeScale, smokeScale);
+                                    }
+                                } else {
+                                    // Before fadeDelay, slowly increase size without fading
+                                    const earlyScale = 1 + elapsed * 0.2;
+                                    particle.scale.set(earlyScale, earlyScale, earlyScale);
+                                }
                             }
                         }
                     }
@@ -3488,10 +3689,20 @@
                     
                     // Tree collision - slightly larger radius since trees are bigger
                     if (distance < 0.8) {
-                        // Softer collision with tree - lose velocity but continue
+                        // Create a small explosion at the impact point
+                        createExplosion(cannonball.position.clone(), 0.7, 0.5, 0xffaa00); // Smaller, shorter explosion with orange color
                         
-                        // Create leaves/branch effect
-                        for (let j = 0; j < 10; j++) {
+                        // Create wood chunks and debris
+                        createTreeDestructionEffect(object, cannonball.position.clone());
+                        
+                        // Camera shake to emphasize impact
+                        cameraShake(0.3, 300, false);
+                        
+                        // Remove the tree from the scene
+                        scene.remove(object);
+                        
+                        // Create leaves/branch effect - more leaves since the tree is being destroyed
+                        for (let j = 0; j < 20; j++) {
                             const leafGeometry = new THREE.PlaneGeometry(0.1, 0.1);
                             const leafMaterial = new THREE.MeshBasicMaterial({
                                 color: 0x226622,
@@ -3501,8 +3712,8 @@
                             });
                             
                             const leaf = new THREE.Mesh(leafGeometry, leafMaterial);
-                            leaf.position.copy(cannonball.position);
-                            leaf.position.y += 0.5; // Leaves come from higher in the tree
+                            leaf.position.copy(object.position);
+                            leaf.position.y += Math.random() * 1.5; // Leaves come from throughout the tree height
                             
                             // Random rotation for leaves
                             leaf.rotation.set(
@@ -3511,11 +3722,11 @@
                                 Math.random() * Math.PI
                             );
                             
-                            // Random direction
+                            // Random direction with more upward velocity for explosion effect
                             const leafVelocity = new THREE.Vector3(
-                                (Math.random() - 0.5) * 2,
-                                Math.random() * 2 - 0.5,  // Some leaves fall, some go up
-                                (Math.random() - 0.5) * 2
+                                (Math.random() - 0.5) * 3,
+                                Math.random() * 2 + 1,  // More upward initial velocity
+                                (Math.random() - 0.5) * 3
                             );
                             
                             leaf.userData = {
@@ -3533,9 +3744,9 @@
                             smokeParticles.push(leaf);
                         }
                         
-                        // Slow down cannonball - trees absorb energy but don't fully stop the cannonball
-                        cannonballVelocity.x *= 0.7;
-                        cannonballVelocity.z *= 0.7;
+                        // Slow down cannonball
+                        cannonballVelocity.x *= 0.6;
+                        cannonballVelocity.z *= 0.6;
                         
                         // Add slight random deflection
                         cannonballVelocity.x += (Math.random() - 0.5) * 0.5;
@@ -3596,6 +3807,116 @@
             if (terrain) {
                 // Force terrain matrix update to update shadow casting
                 terrain.updateMatrixWorld(true);
+            }
+        }
+
+        // Function to create the tree destruction effect
+        function createTreeDestructionEffect(tree, impactPoint) {
+            // Get tree position as base
+            const treePosition = tree.position.clone();
+            
+            // Create wood chunks
+            const chunkCount = 12; // Number of wood chunks
+            const woodColor = 0x8B4513; // Brown color for wood
+            
+            for (let i = 0; i < chunkCount; i++) {
+                // Create wood chunk with randomized size
+                const size = 0.05 + Math.random() * 0.1;
+                const height = 0.1 + Math.random() * 0.3; // Longer in one dimension for log-like pieces
+                
+                // Different geometries for variety: some rectangular chunks, some cylindrical
+                let chunkGeometry;
+                if (Math.random() > 0.5) {
+                    chunkGeometry = new THREE.BoxGeometry(size, height, size);
+                } else {
+                    chunkGeometry = new THREE.CylinderGeometry(size/2, size/2, height, 6, 1);
+                    // Rotate cylinder to be horizontal
+                    if (Math.random() > 0.5) {
+                        chunkGeometry.rotateX(Math.PI/2);
+                    } else {
+                        chunkGeometry.rotateZ(Math.PI/2);
+                    }
+                }
+                
+                const woodMaterial = new THREE.MeshStandardMaterial({
+                    color: woodColor,
+                    roughness: 0.8,
+                    metalness: 0.1
+                });
+                
+                const chunk = new THREE.Mesh(chunkGeometry, woodMaterial);
+                
+                // Position chunks throughout the tree's volume
+                chunk.position.set(
+                    treePosition.x + (Math.random() - 0.5) * 0.5,
+                    treePosition.y + Math.random() * 1.2, // Different heights throughout tree
+                    treePosition.z + (Math.random() - 0.5) * 0.5
+                );
+                
+                // Calculate vector from impact point to the chunk for realistic explosion
+                const directionFromImpact = new THREE.Vector3()
+                    .subVectors(chunk.position, impactPoint)
+                    .normalize();
+                
+                // Add some randomness and ensure upward component
+                const explosionPower = 2 + Math.random() * 3;
+                
+                chunk.userData = {
+                    velocity: new THREE.Vector3(
+                        directionFromImpact.x * explosionPower + (Math.random() - 0.5) * 1.5,
+                        directionFromImpact.y * explosionPower + Math.random() * 2, // Add upward velocity
+                        directionFromImpact.z * explosionPower + (Math.random() - 0.5) * 1.5
+                    ),
+                    rotationSpeed: {
+                        x: (Math.random() - 0.5) * 0.2,
+                        y: (Math.random() - 0.5) * 0.2,
+                        z: (Math.random() - 0.5) * 0.2
+                    },
+                    lifespan: 2 + Math.random() * 2, // Chunks stay a bit longer than leaves
+                    creationTime: Date.now(),
+                    isWoodChunk: true // Flag for special handling in updateParticles
+                };
+                
+                scene.add(chunk);
+                smokeParticles.push(chunk);
+            }
+            
+            // Create dust/smoke at the base of the tree
+            const smokeColor = 0xCCBB99; // Dusty color
+            for (let i = 0; i < 8; i++) {
+                setTimeout(() => {
+                    const smokeGeometry = new THREE.SphereGeometry(0.15 + Math.random() * 0.2, 8, 8);
+                    const smokeMaterial = new THREE.MeshBasicMaterial({
+                        color: smokeColor,
+                        transparent: true,
+                        opacity: 0.6 + Math.random() * 0.2
+                    });
+                    
+                    const smoke = new THREE.Mesh(smokeGeometry, smokeMaterial);
+                    
+                    // Position at base of tree with slight variation
+                    smoke.position.set(
+                        treePosition.x + (Math.random() - 0.5) * 0.4,
+                        treePosition.y + Math.random() * 0.3, // Low to the ground
+                        treePosition.z + (Math.random() - 0.5) * 0.4
+                    );
+                    
+                    // Set properties for dust cloud
+                    smoke.userData = {
+                        velocity: new THREE.Vector3(
+                            (Math.random() - 0.5) * 0.3, // Slow drift
+                            0.3 + Math.random() * 0.5,   // Rise upward
+                            (Math.random() - 0.5) * 0.3  // Slow drift
+                        ),
+                        rotationSpeed: (Math.random() - 0.5) * 0.02,
+                        lifespan: 1.5 + Math.random() * 1, // Shorter lifespan
+                        creationTime: Date.now(),
+                        fadeDelay: 0.5 // Start fading after 0.5 seconds
+                    };
+                    
+                    scene.add(smoke);
+                    smokeParticles.push(smoke);
+                }, i * 50); // Staggered creation for better effect
             }
         }
     </script>
