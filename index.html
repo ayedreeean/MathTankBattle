@@ -289,6 +289,10 @@
         let tripleShotUsed = false;
         let currentShot = 0;
         let totalTripleShotBalls = 3;
+        let waitingForTripleShot = false;  // Flag to track if we're waiting for a triple shot cannonball to finish
+        let tripleShotAngles = [-5, 0, 5]; // Angle offsets for triple shot
+        let nextPowerUp = "tripleshot";    // Track which power-up is next (alternates between "tripleshot" and "shield")
+        const POWERUP_THRESHOLD = 3;       // Number of correct answers needed for a power-up
         
         // Initialize the game
         initGame();
@@ -300,7 +304,7 @@
             
             // Create camera
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-            camera.position.set(0, 7, 12);
+            camera.position.set(0, 9, 15); // Moved back and higher to view the extended terrain
             
             // Create renderer with antialiasing and better shadows
             renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -317,9 +321,6 @@
             // Add skybox
             createSkybox();
             
-            // Add fog for atmospheric effect
-            scene.fog = new THREE.FogExp2(0x789cce, 0.02);
-            
             // Add lighting with dramatic effect
             addLighting();
             
@@ -334,6 +335,9 @@
             
             // Set up event listeners
             setupEventListeners();
+            
+            // Force initial shadow map update
+            forceShadowMapUpdate();
             
             // Handle window resize
             window.addEventListener('resize', onWindowResize, false);
@@ -356,19 +360,25 @@
             
             // Main directional light (sun)
             const mainLight = new THREE.DirectionalLight(0xffffcc, 1.2);
-            mainLight.position.set(10, 20, 15);
+            mainLight.position.set(10, 20, 15); // Higher and positioned to cast longer shadows
             mainLight.castShadow = true;
             
             // Improve shadow quality
             mainLight.shadow.camera.near = 0.5;
             mainLight.shadow.camera.far = 50;
-            mainLight.shadow.camera.left = -20;
-            mainLight.shadow.camera.right = 20;
-            mainLight.shadow.camera.top = 20;
-            mainLight.shadow.camera.bottom = -20;
+            mainLight.shadow.camera.left = -25; // Expanded from -20 to -25
+            mainLight.shadow.camera.right = 25; // Expanded from 20 to 25
+            mainLight.shadow.camera.top = 25;   // Expanded from 20 to 25
+            mainLight.shadow.camera.bottom = -25; // Expanded from -20 to -25
             mainLight.shadow.mapSize.width = 2048;
             mainLight.shadow.mapSize.height = 2048;
-            mainLight.shadow.bias = -0.0005;
+            mainLight.shadow.bias = -0.001; // Adjusted bias to reduce shadow acne
+            
+            // Create a target object for the directional light
+            const lightTarget = new THREE.Object3D();
+            lightTarget.position.set(0, 0, 0); // Center of the scene
+            scene.add(lightTarget);
+            mainLight.target = lightTarget;
             
             scene.add(mainLight);
             
@@ -383,8 +393,8 @@
         }
         
         function createTerrain() {
-            // Create terrain geometry with more detail
-            const terrainGeometry = new THREE.PlaneGeometry(30, 15, 128, 64);
+            // Create terrain geometry with more detail - extended by 8 units on each side (30 -> 46)
+            const terrainGeometry = new THREE.PlaneGeometry(46, 15, 192, 64);
             terrainGeometry.rotateX(-Math.PI / 2);
             
             // Create height map for terrain with more dramatic hills
@@ -393,30 +403,50 @@
             // Clear any previous destruction map - we don't need it anymore
             destructionMap = [];
             
+            // Generate random offsets and frequencies for each game
+            // These will control the randomness of the terrain
+            const randomSeed1 = Math.random() * 10;
+            const randomSeed2 = Math.random() * 10;
+            const randomSeed3 = Math.random() * 10;
+            const randomSeed4 = Math.random() * 10;
+            
+            // Random frequency multipliers (between 0.8 and 1.2 of original values)
+            const freqMultiplier1 = 0.8 + Math.random() * 0.4;
+            const freqMultiplier2 = 0.8 + Math.random() * 0.4;
+            const freqMultiplier3 = 0.8 + Math.random() * 0.4;
+            const freqMultiplier4 = 0.8 + Math.random() * 0.4;
+            
+            // Random amplitude multipliers
+            const ampMultiplier1 = 0.9 + Math.random() * 0.6; // 0.9-1.5 range
+            const ampMultiplier2 = 0.9 + Math.random() * 0.6;
+            const ampMultiplier3 = 0.9 + Math.random() * 0.6;
+            const ampMultiplier4 = 0.9 + Math.random() * 0.6;
+            
+            // Randomize central hill parameters
+            const hillAmplitude = 3.0 + Math.random() * 1.0;  // 3.0 to 4.0 (was fixed at 3.5)
+            const hillWidth = 5.0 + Math.random() * 2.0;      // 5.0 to 7.0 (was fixed at 6.0)
+            
+            // Random horizontal shift for the hill (slight shift to make it off-center)
+            const hillCenter = (Math.random() - 0.5) * 2; // -1 to 1 range
+            
             // Calculate baseline heights for the terrain
             for (let i = 0; i < vertices.length; i += 3) {
                 const x = vertices[i];
                 const z = vertices[i + 2];
                 
-                // Create more dramatic terrain with multiple frequencies
+                // Create more dramatic terrain with multiple frequencies - RANDOMIZED VALUES
                 let height = 
-                    Math.sin(x / 3) * 0.8 + 
-                    Math.cos(z / 2) * 0.5 + 
-                    Math.sin(x / 1.5 + z / 2) * 0.3 +
-                    Math.sin(x * 0.5 + z * 0.5) * 0.4;
-                    
-                // Create a gradual, wide hill in the middle (centered at x=0)
-                // Using a wider Gaussian function for a more natural slope
-                const hillAmplitude = 2.5;   // Slightly lower height
-                const hillWidth = 8.0;       // Much wider hill for gradual slope
-                const hillCenter = 0;        // Center the hill between the tanks
+                    Math.sin((x / 3) * freqMultiplier1 + randomSeed1) * 1.2 * ampMultiplier1 +
+                    Math.cos((z / 2) * freqMultiplier2 + randomSeed2) * 0.8 * ampMultiplier2 +
+                    Math.sin((x / 1.5 + z / 2) * freqMultiplier3 + randomSeed3) * 0.6 * ampMultiplier3 +
+                    Math.sin((x * 0.5 + z * 0.5) * freqMultiplier4 + randomSeed4) * 0.7 * ampMultiplier4;
                 
-                // Calculate distance from hill center (use actual distance, not absolute value)
+                // Create a more pronounced hill in the middle (centered at x=hillCenter)
+                // Using a Gaussian function for a natural slope
                 const distanceFromCenter = x - hillCenter;
                 
                 // Create a bell-shaped hill that's tallest in the middle
                 // and gradually tapers off as we move away from the center
-                // Use a wider influence area (15 units instead of 8)
                 const hillHeight = hillAmplitude * Math.exp(-(distanceFromCenter * distanceFromCenter) / (2 * hillWidth * hillWidth));
                 height += hillHeight;
                 
@@ -443,25 +473,26 @@
             
             // Repeat the texture for better detail
             terrainMaterial.map.wrapS = terrainMaterial.map.wrapT = THREE.RepeatWrapping;
-            terrainMaterial.map.repeat.set(8, 4);
+            terrainMaterial.map.repeat.set(12, 4); // Increased from 8 to 12 to match the wider terrain
             
             // Create terrain mesh
             terrain = new THREE.Mesh(terrainGeometry, terrainMaterial);
             terrain.receiveShadow = true;
+            terrain.castShadow = true;  // Add this line to enable self-shadowing
             terrain.name = "terrain";
             scene.add(terrain);
         }
         
         function createTanks() {
             // Create player tank (blue) on left, facing right (towards +X)
-            playerTank = createTank(0x0066ff, -10, getTerrainHeightAt(-10, 0) + 0.5, 0);
+            playerTank = createTank(0x0066ff, -12, getTerrainHeightAt(-12, 0) + 0.5, 0);
             playerTank.name = "playerTank";
             playerTank.userData.health = MAX_HEALTH; // Initialize health property
             playerTank.userData.isPlayer = true;
             scene.add(playerTank);
             
             // Create computer tank (red) on right, facing left (towards -X)
-            computerTank = createTank(0xff3333, 10, getTerrainHeightAt(10, 0) + 0.5, Math.PI);
+            computerTank = createTank(0xff3333, 12, getTerrainHeightAt(12, 0) + 0.5, Math.PI);
             computerTank.name = "computerTank";
             computerTank.userData.health = MAX_HEALTH; // Initialize health property
             computerTank.userData.isPlayer = false;
@@ -730,23 +761,36 @@
         
         // New function to check for and activate powerups
         function checkForPowerups() {
-            if (consecutiveCorrectAnswers === 3 && !playerHasTripleShot && !playerHasShield) {
-                // First powerup: Triple Shot
-                playerHasTripleShot = true;
-                tripleShotUsed = false;
+            // Check if we've reached the threshold for a power-up
+            if (consecutiveCorrectAnswers >= POWERUP_THRESHOLD) {
+                // Determine which power-up to activate based on the nextPowerUp variable
+                if (nextPowerUp === "tripleshot") {
+                    // Activate Triple Shot power-up
+                    playerHasTripleShot = true;
+                    tripleShotUsed = false;
+                    
+                    // Show powerup notification
+                    showPowerupNotification("Triple Shot activated! Firing 3 cannonballs!");
+                    
+                    // Set next power-up to shield
+                    nextPowerUp = "shield";
+                } 
+                else if (nextPowerUp === "shield") {
+                    // Activate Shield power-up
+                    playerHasShield = true;
+                    
+                    // Apply shield to player tank
+                    applyShieldEffect(playerTank);
+                    
+                    // Show powerup notification
+                    showPowerupNotification("Shield activated! You're protected from the next hit!");
+                    
+                    // Set next power-up to triple shot
+                    nextPowerUp = "tripleshot";
+                }
                 
-                // Show powerup notification
-                showPowerupNotification("Triple Shot activated! Your next attack will fire 3 cannonballs!");
-            } 
-            else if (consecutiveCorrectAnswers === 6 && playerHasTripleShot && !playerHasShield) {
-                // Second powerup: Shield
-                playerHasShield = true;
-                
-                // Apply shield to player tank
-                applyShieldEffect(playerTank);
-                
-                // Show powerup notification
-                showPowerupNotification("Shield activated! You're protected from the next hit!");
+                // Reset consecutive correct answers after earning a power-up
+                consecutiveCorrectAnswers = 0;
             }
             
             // Update UI to reflect powerups
@@ -812,21 +856,11 @@
                 const streakDisplay = document.createElement('div');
                 streakDisplay.id = 'streak-display';
                 streakDisplay.style.color = '#FFFFFF';
-                streakDisplay.textContent = 'Streak: 0';
+                streakDisplay.textContent = 'Streak: 0/3';
                 
-                const tripleShotIndicator = document.createElement('div');
-                tripleShotIndicator.id = 'triple-shot-indicator';
-                tripleShotIndicator.style.color = '#888888';
-                tripleShotIndicator.textContent = '🔺 Triple Shot';
-                
-                const shieldIndicator = document.createElement('div');
-                shieldIndicator.id = 'shield-indicator';
-                shieldIndicator.style.color = '#888888';
-                shieldIndicator.textContent = '🛡️ Shield';
-                
+                // Remove triple shot and shield indicators
+                // Only add streak display to container
                 powerupsContainer.appendChild(streakDisplay);
-                powerupsContainer.appendChild(tripleShotIndicator);
-                powerupsContainer.appendChild(shieldIndicator);
                 powerupsDisplay.appendChild(powerupsContainer);
                 
                 document.body.appendChild(powerupsDisplay);
@@ -834,51 +868,40 @@
             
             // Update the display
             if (document.getElementById('streak-display')) {
-                document.getElementById('streak-display').textContent = `Streak: ${consecutiveCorrectAnswers}`;
-            }
-            
-            if (document.getElementById('triple-shot-indicator')) {
-                const tripleShotIndicator = document.getElementById('triple-shot-indicator');
-                if (playerHasTripleShot && !tripleShotUsed) {
-                    tripleShotIndicator.style.color = '#00ffff';
-                    tripleShotIndicator.style.textShadow = '0 0 5px rgba(0, 255, 255, 0.7)';
+                // Show streak as X/3
+                document.getElementById('streak-display').textContent = `Streak: ${consecutiveCorrectAnswers}/${POWERUP_THRESHOLD}`;
+                
+                // Change color if approaching a power-up
+                if (consecutiveCorrectAnswers >= POWERUP_THRESHOLD - 1) {
+                    document.getElementById('streak-display').style.color = '#00ffff';
+                    document.getElementById('streak-display').style.textShadow = '0 0 5px rgba(0, 255, 255, 0.7)';
                 } else {
-                    tripleShotIndicator.style.color = '#888888';
-                    tripleShotIndicator.style.textShadow = 'none';
+                    document.getElementById('streak-display').style.color = '#FFFFFF';
+                    document.getElementById('streak-display').style.textShadow = 'none';
                 }
             }
             
-            if (document.getElementById('shield-indicator')) {
-                const shieldIndicator = document.getElementById('shield-indicator');
-                if (playerHasShield) {
-                    shieldIndicator.style.color = '#00ffff';
-                    shieldIndicator.style.textShadow = '0 0 5px rgba(0, 255, 255, 0.7)';
-                } else {
-                    shieldIndicator.style.color = '#888888';
-                    shieldIndicator.style.textShadow = 'none';
-                }
-            }
+            // Remove checks for triple shot and shield indicators as they no longer exist in the DOM
         }
 
         // Triple shot implementation
         function fireTripleShot() {
-            // Create and fire three cannonballs with slight angle variations
-            if (currentShot < totalTripleShotBalls) {
-                // Fire cannonball with small angle adjustments
-                const angleOffset = (currentShot - 1) * 5; // -5, 0, +5 degrees
-                fireCannon(angleOffset);
-                
-                // Schedule the next shot
-                currentShot++;
-                if (currentShot < totalTripleShotBalls) {
-                    setTimeout(fireTripleShot, 300);
-                } else {
-                    // Reset triple shot after all shots are fired
-                    playerHasTripleShot = false;
-                    tripleShotUsed = false;
-                    updatePowerupsDisplay();
-                }
-            }
+            // Initialize the triple shot sequence
+            currentShot = 0;
+            waitingForTripleShot = true;
+            tripleShotUsed = true;
+            
+            // Show message about triple shot
+            document.getElementById('result-message').textContent = `Triple Shot active! Firing shot 1 of ${totalTripleShotBalls}`;
+            document.getElementById('result-message').style.color = '#00ffff';
+            
+            // Fire the first cannonball
+            fireCannon(tripleShotAngles[currentShot]);
+            
+            // Increment the shot counter after firing
+            currentShot++;
+            
+            // The rest will be handled in switchTurn when each cannonball completes
         }
 
         // Apply shield effect to tank
@@ -1029,8 +1052,8 @@
                 }, i * 20);
             }
             
-            // Shake the camera
-            cameraShake(0.3, 300);
+            // Shake the camera - REMOVED to keep shake only on collisions
+            // cameraShake(0.3, 300);
             
             // Disable controls during firing
             document.getElementById('fire-button').disabled = true;
@@ -1109,7 +1132,7 @@
                 
                 // Check if cannonball is out of bounds
                 if (
-                    Math.abs(cannonball.position.x) > 15 ||
+                    Math.abs(cannonball.position.x) > 23 ||  // Updated from 15 to 23 for the extended terrain
                     cannonball.position.y < -10 ||
                     Math.abs(cannonball.position.z) > 10
                 ) {
@@ -1140,12 +1163,22 @@
             modifyTerrainAtImpact(cannonball.position.x, cannonball.position.z);
             
             // Camera shake on impact
-            cameraShake(0.4, 500);
+            cameraShake(0.4, 500, false); // Keep camera controls enabled
+            
+            // Display message if we're in a triple shot sequence
+            if (waitingForTripleShot) {
+                const shotsRemaining = totalTripleShotBalls - currentShot;
+                if (shotsRemaining > 0) {
+                    document.getElementById('result-message').textContent = 
+                        `Triple Shot: Shot ${currentShot} completed. ${shotsRemaining} more to go.`;
+                    document.getElementById('result-message').style.color = '#00ffff';
+                }
+            }
             
             // Remove cannonball
             resetCannonball();
             
-            // Switch turns
+            // Switch turns (this will handle triple shot sequencing)
             switchTurn();
         }
         
@@ -1155,11 +1188,12 @@
             const explosionGroup = new THREE.Group();
             explosionGroup.position.copy(position);
             explosionGroup.userData.creationTime = Date.now();
-            explosionGroup.userData.duration = 1.5; // Longer duration
+            explosionGroup.userData.duration = 1.5; // Longer duration for better light fadeout
             
-            // Create a point light for the explosion
+            // Create a point light for the explosion with a unique name for tracking
             const explosionLight = new THREE.PointLight(0xff7700, 5, 3);
             explosionLight.position.set(0, 0, 0);
+            explosionLight.name = "explosionLight";
             explosionGroup.add(explosionLight);
             
             // Create a mesh for the core explosion
@@ -1170,6 +1204,8 @@
                 opacity: 1
             });
             const core = new THREE.Mesh(coreGeometry, coreMaterial);
+            // Mark this mesh as the explosion core
+            core.userData = { isCore: true };
             explosionGroup.add(core);
             
             // Create fire particles
@@ -1434,7 +1470,27 @@
             createDenseSmoke(tank.position.clone(), 30, 0x222222, 5);
             
             // More dramatic camera shake
-            cameraShake(1.0, 1200); // Increased intensity and duration
+            cameraShake(1.0, 1200, false); // Keep camera controls enabled during tank hits
+            
+            // If we're in a triple shot sequence, end it since we hit the target
+            if (waitingForTripleShot) {
+                const shotsFired = currentShot;
+                const shotsRemaining = totalTripleShotBalls - currentShot;
+                
+                // Display message about the hit during triple shot
+                document.getElementById('result-message').textContent = 
+                    `Triple Shot: Direct hit on shot ${shotsFired} of ${totalTripleShotBalls}! ${shotsRemaining > 0 ? `${shotsRemaining} more shot${shotsRemaining > 1 ? 's' : ''} coming!` : 'That was the final shot!'}`;
+                document.getElementById('result-message').style.color = '#00ffff';
+                
+                // Only end the sequence if this was the last shot
+                if (shotsRemaining <= 0) {
+                    waitingForTripleShot = false;
+                    playerHasTripleShot = false;
+                    tripleShotUsed = false;
+                    currentShot = 0;
+                    updatePowerupsDisplay();
+                }
+            }
             
             // Check if tank has shield (only player can have shield for now)
             if (tank === playerTank && playerHasShield) {
@@ -1445,8 +1501,15 @@
                 const shield = tank.getObjectByName("shield");
                 if (shield) tank.remove(shield);
                 
-                // Show shield protection message
-                document.getElementById('result-message').textContent = "Your shield absorbed the hit!";
+                // Show shield protection message considering triple shot sequence
+                if (waitingForTripleShot) {
+                    const shotsFired = currentShot;
+                    const shotsRemaining = totalTripleShotBalls - currentShot;
+                    document.getElementById('result-message').textContent = 
+                        `Your shield absorbed the hit! ${shotsRemaining > 0 ? `Triple shot continues, ${shotsRemaining} more shot${shotsRemaining > 1 ? 's' : ''} coming!` : ''}`;
+                } else {
+                    document.getElementById('result-message').textContent = "Your shield absorbed the hit!";
+                }
                 document.getElementById('result-message').style.color = '#00ffff';
                 
                 // Update powerups display
@@ -1476,10 +1539,24 @@
             
             // Update message with damage info
             if (tank === playerTank) {
-                document.getElementById('result-message').textContent = `Computer hit you for ${damage} damage!`;
+                let message = `Computer hit you for ${damage} damage!`;
+                if (waitingForTripleShot) {
+                    const shotsRemaining = totalTripleShotBalls - currentShot;
+                    if (shotsRemaining > 0) {
+                        message += ` (Triple shot: ${shotsRemaining} more shot${shotsRemaining > 1 ? 's' : ''} coming)`;
+                    }
+                }
+                document.getElementById('result-message').textContent = message;
                 document.getElementById('result-message').style.color = '#ff5555';
             } else {
-                document.getElementById('result-message').textContent = `You hit enemy for ${damage} damage!`;
+                let message = `You hit enemy for ${damage} damage!`;
+                if (waitingForTripleShot) {
+                    const shotsRemaining = totalTripleShotBalls - currentShot;
+                    if (shotsRemaining > 0) {
+                        message += ` (Triple shot: ${shotsRemaining} more shot${shotsRemaining > 1 ? 's' : ''} coming)`;
+                    }
+                }
+                document.getElementById('result-message').textContent = message;
                 document.getElementById('result-message').style.color = '#55ff55';
             }
             
@@ -1491,9 +1568,27 @@
                 // Tank destroyed
                 if (tank === playerTank) {
                     document.getElementById('result-message').textContent = 'Your tank was destroyed!';
+                    
+                    // End triple shot sequence if active
+                    waitingForTripleShot = false;
+                    currentShot = 0;
+                    
                     endGame(false); // Player lost
                 } else {
                     document.getElementById('result-message').textContent = 'You destroyed the enemy tank!';
+                    
+                    // If in triple shot, note that despite destruction, sequence will continue
+                    if (waitingForTripleShot && currentShot < totalTripleShotBalls) {
+                        document.getElementById('result-message').textContent = 
+                            `You destroyed the enemy tank! ${totalTripleShotBalls - currentShot} more shot${totalTripleShotBalls - currentShot > 1 ? 's' : ''} will still fire.`;
+                        document.getElementById('result-message').style.color = '#55ff55';
+                        
+                        // Reset cannonball and switch turns (which will continue the triple shot)
+                        resetCannonball();
+                        switchTurn();
+                        return;
+                    }
+                    
                     endGame(true); // Player won
                 }
             } else {
@@ -1550,7 +1645,53 @@
         }
         
         function switchTurn() {
+            // If we're in the middle of a triple shot sequence, continue with the next shot
+            // instead of switching turns
+            if (waitingForTripleShot && currentShot < totalTripleShotBalls) {
+                // Fire the next shot in the triple shot sequence
+                setTimeout(() => {
+                    // Show message indicating which shot we're firing
+                    document.getElementById('result-message').textContent = 
+                        `Triple Shot: Firing shot ${currentShot + 1} of ${totalTripleShotBalls}`;
+                    document.getElementById('result-message').style.color = '#00ffff';
+                    
+                    // Fire the next cannonball with angle offset
+                    fireCannon(tripleShotAngles[currentShot]);
+                    currentShot++;
+                }, 1000);  // Wait a second between shots
+                return;
+            }
+            
+            // If we just finished the last shot of a triple shot, reset the flags
+            if (waitingForTripleShot && currentShot >= totalTripleShotBalls) {
+                waitingForTripleShot = false;
+                playerHasTripleShot = false;
+                tripleShotUsed = false;
+                currentShot = 0;
+                updatePowerupsDisplay();
+                
+                document.getElementById('result-message').textContent = 'Triple Shot sequence completed!';
+                document.getElementById('result-message').style.color = '#00ffff';
+            }
+            
+            // Normal turn switching
             playerTurn = !playerTurn;
+            
+            // Check if shield should expire - only when switching back to player's turn
+            // This ensures shield stays active during the computer's turn
+            if (playerTurn && playerHasShield) {
+                // Remove shield from player tank (after computer has had chance to shoot)
+                playerHasShield = false;
+                const shield = playerTank.getObjectByName("shield");
+                if (shield) playerTank.remove(shield);
+                
+                // Show message about shield expiration
+                document.getElementById('result-message').textContent = "Your shield has expired!";
+                document.getElementById('result-message').style.color = '#00ffff';
+                
+                // Update powerups display
+                updatePowerupsDisplay();
+            }
             
             // Re-enable controls
             document.getElementById('fire-button').disabled = false;
@@ -1613,8 +1754,8 @@
                 
                 scene.add(cannonball);
                 
-                // Shake camera
-                cameraShake(0.2, 300);
+                // Shake camera - REMOVED to keep shake only on collisions
+                // cameraShake(0.2, 300);
                 
                 // Disable fire button during computer's turn
                 document.getElementById('fire-button').disabled = true;
@@ -1639,11 +1780,27 @@
             return Math.min(Math.PI/3, Math.max(0.1, baseAngle));
         }
         
-        function cameraShake(intensity, duration) {
+        function cameraShake(intensity, duration, disableControls = false) {
+            // Store original camera position and target
             const originalPosition = camera.position.clone();
-            let elapsed = 0;
             
-            function shakeStep(delta) {
+            // Temporarily disable controls to avoid conflicts, only if disableControls is true
+            const controlsEnabled = controls.enabled;
+            if (disableControls) {
+                controls.enabled = false;
+            }
+            
+            let elapsed = 0;
+            let lastTime = performance.now();
+            let shakeActive = true;
+            
+            function shakeStep() {
+                if (!shakeActive) return;
+                
+                const now = performance.now();
+                const delta = (now - lastTime) / 1000; // Convert to seconds
+                lastTime = now;
+                
                 elapsed += delta;
                 
                 if (elapsed < duration / 1000) {
@@ -1655,14 +1812,42 @@
                         originalPosition.z + (Math.random() - 0.5) * intensity * remaining
                     );
                     
-                    requestAnimationFrame(deltaTime => shakeStep(deltaTime / 1000));
+                    // Force camera update in the render loop
+                    camera.updateProjectionMatrix();
+                    
+                    // Continue shake on next frame
+                    requestAnimationFrame(shakeStep);
                 } else {
                     // Reset to original position
                     camera.position.copy(originalPosition);
+                    camera.updateProjectionMatrix();
+                    
+                    // Re-enable controls only if we disabled them
+                    if (disableControls) {
+                        controls.enabled = controlsEnabled;
+                    }
+                    
+                    // Mark shake as complete
+                    shakeActive = false;
                 }
             }
             
-            requestAnimationFrame(deltaTime => shakeStep(deltaTime / 1000));
+            // Start shake animation
+            requestAnimationFrame(shakeStep);
+            
+            // Safety timeout to ensure controls are re-enabled
+            setTimeout(() => {
+                if (shakeActive) {
+                    shakeActive = false;
+                    camera.position.copy(originalPosition);
+                    camera.updateProjectionMatrix();
+                    
+                    // Only re-enable if we disabled them
+                    if (disableControls) {
+                        controls.enabled = controlsEnabled;
+                    }
+                }
+            }, duration + 100);
         }
         
         function endGame(playerWon) {
@@ -2226,6 +2411,11 @@
                     controls.update();
                 }
                 
+                // Periodically force shadow updates (every 30 frames or ~0.5 seconds)
+                if (Math.random() < 0.03) { // ~3% chance per frame
+                    updateShadows();
+                }
+                
                 // Render scene
                 if (scene && camera && renderer) {
                     renderer.render(scene, camera);
@@ -2363,13 +2553,12 @@
         }
 
         function updateExplosions(deltaTime, currentTime) {
-            // Update and animate explosion effects
+            // Update explosion animations
             for (let i = explosionGroups.length - 1; i >= 0; i--) {
                 const group = explosionGroups[i];
                 
-                // Safety check
-                if (!group || !group.userData || group.userData.creationTime === undefined || 
-                    group.userData.duration === undefined) {
+                // Safety check - skip groups that don't have necessary data
+                if (!group || !group.userData || group.userData.creationTime === undefined) {
                     if (group) scene.remove(group);
                     explosionGroups.splice(i, 1);
                     continue;
@@ -2377,28 +2566,51 @@
                 
                 const elapsed = (currentTime - group.userData.creationTime) / 1000;
                 
+                // Check if explosion is still active
                 if (elapsed < group.userData.duration) {
-                    // Scale up the core explosion then fade it
-                    const core = group.children.find(child => child instanceof THREE.Mesh);
+                    // Find core mesh and light
+                    const core = group.children.find(child => child.userData && child.userData.isCore);
+                    const light = group.children.find(child => child instanceof THREE.PointLight);
+                    
+                    // Scale and fade explosion core if it exists
                     if (core && core.material) {
-                        // First half grows, second half shrinks
-                        if (elapsed < group.userData.duration / 2) {
-                            const scale = 1 + elapsed * 3;
-                            core.scale.set(scale, scale, scale);
+                        // If it's a firework, use special animation
+                        if (group.userData.type !== undefined) {
+                            // Scale core based on type
+                            const progress = elapsed / group.userData.duration;
+                            let scaleFactor;
+                            
+                            // Different expansion rates for different firework types
+                            if (group.userData.type === 0) { // Classic firework
+                                scaleFactor = 1 + progress * 2;
+                            } else if (group.userData.type === 1) { // Ring
+                                scaleFactor = 1 + progress * 3;
+                            } else if (group.userData.type === 2) { // Double sphere
+                                scaleFactor = 1 + progress * 2.5;
+                            } else { // Spiral
+                                scaleFactor = 1 + progress * 2;
+                            }
+                            
+                            core.scale.set(scaleFactor, scaleFactor, scaleFactor);
+                            
+                            // Fade out core
+                            core.material.opacity = Math.max(0, 1 - progress * 2);
                         } else {
-                            const opacity = 1 - ((elapsed - group.userData.duration / 2) / (group.userData.duration / 2));
-                            core.material.opacity = opacity;
+                            // Regular explosion
+                            const scale = 1 + elapsed * 4; // Expand over time
+                            core.scale.set(scale, scale, scale);
+                            
+                            // Fade out
+                            core.material.opacity = Math.max(0, 1 - (elapsed / group.userData.duration) * 2);
                         }
                     }
                     
-                    // Update the explosion light intensity
-                    const light = group.children.find(child => child instanceof THREE.PointLight);
+                    // Adjust light intensity if it exists
                     if (light) {
-                        // Pulsating light effect for fireworks
+                        // Special handling for fireworks
                         if (group.userData.type !== undefined) {
-                            // This is a firework
-                            const pulseFactor = 1 + 0.5 * Math.sin(elapsed * 15); // Fast pulsing
-                            light.intensity = 4 * (1 - elapsed / group.userData.duration) * pulseFactor;
+                            // Base reduction in intensity
+                            light.intensity = 4 * (1 - elapsed / group.userData.duration);
                             
                             // Color changing effect for some firework types
                             if (group.userData.type === 1 || group.userData.type === 3) {
@@ -2407,7 +2619,8 @@
                             }
                         } else {
                             // Normal explosion - regular fade
-                            light.intensity = 5 * (1 - elapsed / group.userData.duration);
+                            // Make sure the light fades completely to zero
+                            light.intensity = 5 * Math.max(0, 1 - elapsed / group.userData.duration);
                         }
                     }
                     
@@ -2513,7 +2726,17 @@
                         }
                     });
                 } else {
-                    // Remove expired explosion group
+                    // Ensure the explosion light is fully faded out before removing
+                    const light = group.children.find(child => child instanceof THREE.PointLight);
+                    if (light) {
+                        light.intensity = 0;
+                    }
+                    
+                    // Remove expired explosion group and all its children
+                    while (group.children.length > 0) {
+                        const child = group.children[0];
+                        group.remove(child);
+                    }
                     scene.remove(group);
                     explosionGroups.splice(i, 1);
                 }
@@ -2944,12 +3167,14 @@
             
             // Define no-go zones around tanks to ensure they don't get blocked
             const safeZoneRadius = 4;
-            const playerSafeZone = new THREE.Vector2(-10, 0); // Player tank position
-            const computerSafeZone = new THREE.Vector2(10, 0); // Computer tank position
+            const playerSafeZone = new THREE.Vector2(-12, 0); // Player tank position
+            const computerSafeZone = new THREE.Vector2(12, 0); // Computer tank position
+            
+            // Randomize the number of boulders and trees for each game
+            const numBoulders = 12 + Math.floor(Math.random() * 10); // 12-21 boulders
+            const numTrees = 15 + Math.floor(Math.random() * 12);    // 15-26 trees
             
             // 1. Create boulders
-            const numBoulders = 12; // Number of boulders to create
-            
             for (let i = 0; i < numBoulders; i++) {
                 // Random position on the terrain
                 let x, z;
@@ -2957,7 +3182,7 @@
                 
                 // Keep trying positions until we find one that's not too close to tanks
                 while (tooClose) {
-                    x = (Math.random() * 28) - 14; // Range from -14 to 14
+                    x = (Math.random() * 44) - 22; // Range from -22 to 22 (updated for wider terrain)
                     z = (Math.random() * 14) - 7;  // Range from -7 to 7
                     
                     // Check distance from tanks
@@ -3046,8 +3271,6 @@
             }
             
             // 2. Create trees
-            const numTrees = 15; // Number of trees to create
-            
             for (let i = 0; i < numTrees; i++) {
                 // Random position on the terrain
                 let x, z;
@@ -3055,18 +3278,18 @@
                 
                 // Keep trying positions until we find one that's not too close to tanks
                 while (tooClose) {
-                    x = (Math.random() * 28) - 14; // Range from -14 to 14
+                    x = (Math.random() * 44) - 22; // Range from -22 to 22 (updated for wider terrain)
                     z = (Math.random() * 14) - 7;  // Range from -7 to 7
                     
                     // Check distance from tanks
                     const distToPlayer = new THREE.Vector2(x, z).distanceTo(playerSafeZone);
                     const distToComputer = new THREE.Vector2(x, z).distanceTo(computerSafeZone);
                     
-                    // Only place if outside both safe zones
-                    tooClose = (distToPlayer < safeZoneRadius || distToComputer < safeZoneRadius || Math.abs(x) < 3);
+                    // Only place if outside both safe zones and not on the central hill (x close to 0)
+                    tooClose = (distToPlayer < safeZoneRadius || distToComputer < safeZoneRadius || Math.abs(x) < 2);
                     
                     // Also avoid central firing line
-                    if (Math.abs(z) < 2) tooClose = true;
+                    if (Math.abs(z) < 1.5) tooClose = true;
                 }
                 
                 // Get the height at this position
@@ -3315,6 +3538,58 @@
                         return; // Exit after handling one collision
                     }
                 }
+            }
+        }
+
+        // New function to force shadow map update
+        function forceShadowMapUpdate() {
+            // Find the directional light
+            const mainLight = scene.children.find(child => 
+                child instanceof THREE.DirectionalLight && child.castShadow);
+            
+            if (mainLight) {
+                // Force shadow map update
+                mainLight.shadow.needsUpdate = true;
+                
+                // Set a helper target for the light to aim better at the terrain
+                const target = new THREE.Object3D();
+                target.position.set(0, 0, 0); // Center of the scene
+                scene.add(target);
+                mainLight.target = target;
+                
+                // Ensure the directional light is updated
+                mainLight.updateMatrixWorld();
+                mainLight.target.updateMatrixWorld();
+                
+                // Render the scene once to update shadow maps
+                renderer.render(scene, camera);
+                
+                // Render once more to make sure shadows are fully applied
+                requestAnimationFrame(() => {
+                    renderer.render(scene, camera);
+                });
+            }
+        }
+
+        // Function to update shadows during gameplay
+        function updateShadows() {
+            // Find all shadow-casting lights
+            scene.traverse(function(object) {
+                if (object instanceof THREE.Light && object.castShadow) {
+                    object.shadow.needsUpdate = true;
+                    
+                    // Make sure light targets are updated
+                    if (object.target) {
+                        object.target.updateMatrixWorld();
+                        object.updateMatrixWorld();
+                    }
+                }
+            });
+            
+            // Update terrain shadow casting
+            if (terrain) {
+                // Force terrain matrix update to update shadow casting
+                terrain.updateMatrixWorld(true);
             }
         }
     </script>
