@@ -340,18 +340,11 @@
         }
 
         function createSkybox() {
-            // Create a dramatic sky background using a cube texture
-            const skyboxTextures = [
-                'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/cube/skybox/px.jpg',
-                'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/cube/skybox/nx.jpg',
-                'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/cube/skybox/py.jpg',
-                'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/cube/skybox/ny.jpg',
-                'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/cube/skybox/pz.jpg',
-                'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/cube/skybox/nz.jpg'
-            ];
+            // Set a simple sky blue background color instead of loading cube textures
+            scene.background = new THREE.Color(0x87CEEB);
             
-            const loader = new THREE.CubeTextureLoader();
-            scene.background = loader.load(skyboxTextures);
+            // Adjust the fog color to match the sky blue background
+            scene.fog = new THREE.FogExp2(0x87CEEB, 0.02);
         }
         
         function addLighting() {
@@ -2984,28 +2977,43 @@
                 // Create boulder with random size and rotation
                 const size = 0.3 + Math.random() * 0.7; // Size between 0.3 and 1.0
                 
-                // Use a combination of geometries for varied boulders
+                // Use a combination of geometries for varied boulders - only geometric shapes (no spheres)
                 let boulderGeometry;
-                const boulderType = Math.floor(Math.random() * 4);
+                const boulderType = Math.floor(Math.random() * 3);
                 
                 if (boulderType === 0) {
                     // Rough boulder - icosahedron
                     boulderGeometry = new THREE.IcosahedronGeometry(size, 0);
-                } else if (boulderType === 1) {
-                    // Smoother boulder - icosahedron with subdivision
-                    boulderGeometry = new THREE.IcosahedronGeometry(size, 1);
-                } else if (boulderType === 2) {
-                    // Angular boulder - dodecahedron
-                    boulderGeometry = new THREE.DodecahedronGeometry(size, 0);
-                } else {
-                    // Classic boulder - sphere with noise
-                    boulderGeometry = new THREE.SphereGeometry(size, 8, 6);
-                    // Apply some random vertex displacement for roughness
+                    // Add some randomization to vertices for more variation
                     const vertices = boulderGeometry.attributes.position.array;
                     for (let j = 0; j < vertices.length; j += 3) {
-                        vertices[j] += (Math.random() - 0.5) * 0.1 * size;
-                        vertices[j+1] += (Math.random() - 0.5) * 0.1 * size;
-                        vertices[j+2] += (Math.random() - 0.5) * 0.1 * size;
+                        vertices[j] += (Math.random() - 0.5) * 0.15 * size;
+                        vertices[j+1] += (Math.random() - 0.5) * 0.15 * size;
+                        vertices[j+2] += (Math.random() - 0.5) * 0.15 * size;
+                    }
+                    boulderGeometry.attributes.position.needsUpdate = true;
+                    boulderGeometry.computeVertexNormals();
+                } else if (boulderType === 1) {
+                    // Angular boulder - dodecahedron
+                    boulderGeometry = new THREE.DodecahedronGeometry(size, 0);
+                    // Add some randomization to vertices for more variation
+                    const vertices = boulderGeometry.attributes.position.array;
+                    for (let j = 0; j < vertices.length; j += 3) {
+                        vertices[j] += (Math.random() - 0.5) * 0.12 * size;
+                        vertices[j+1] += (Math.random() - 0.5) * 0.12 * size;
+                        vertices[j+2] += (Math.random() - 0.5) * 0.12 * size;
+                    }
+                    boulderGeometry.attributes.position.needsUpdate = true;
+                    boulderGeometry.computeVertexNormals();
+                } else {
+                    // Octahedron - another geometric shape option
+                    boulderGeometry = new THREE.OctahedronGeometry(size, 0);
+                    // Add some randomization to vertices for more variation
+                    const vertices = boulderGeometry.attributes.position.array;
+                    for (let j = 0; j < vertices.length; j += 3) {
+                        vertices[j] += (Math.random() - 0.5) * 0.18 * size;
+                        vertices[j+1] += (Math.random() - 0.5) * 0.18 * size;
+                        vertices[j+2] += (Math.random() - 0.5) * 0.18 * size;
                     }
                     boulderGeometry.attributes.position.needsUpdate = true;
                     boulderGeometry.computeVertexNormals();
