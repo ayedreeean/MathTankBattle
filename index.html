@@ -2864,6 +2864,8 @@
             const bgBarGeometry = new THREE.BoxGeometry(1.5, 0.15, 0.05);
             const bgBarMaterial = new THREE.MeshBasicMaterial({ color: 0x444444 });
             const bgBar = new THREE.Mesh(bgBarGeometry, bgBarMaterial);
+            // Center the background bar at origin
+            bgBar.position.set(0, 0, 0);
             healthBarGroup.add(bgBar);
             
             // Create foreground bar (colored based on tank)
@@ -2874,8 +2876,12 @@
             fgBar.name = "healthFill";
             
             // Set the origin to left side for easier scaling
-            fgBar.position.x = 0;
+            // Instead of translating geometry, position both elements consistently
+            fgBar.position.set(0, 0, 0.005); // Slightly in front of the background for visibility
+            
+            // Adjust geometry transformations for proper scaling from left edge
             fgBarGeometry.translate(0.75, 0, 0);
+            bgBarGeometry.translate(0.75, 0, 0);
             
             healthBarGroup.add(fgBar);
             
