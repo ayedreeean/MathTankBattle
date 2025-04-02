@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Math Tank Battle</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Math Tank Game</title>
     <style>
         body { 
             margin: 0; 
@@ -24,27 +24,35 @@
             display: flex;
             justify-content: center;
             pointer-events: none;
+            z-index: 100;
         }
         #game-ui {
             background-color: rgba(0, 0, 0, 0.7);
             color: white;
-            padding: 15px;
+            padding: 20px 30px;
             border-radius: 10px;
             display: flex;
             flex-direction: column;
-            gap: 10px;
+            gap: 15px;
             pointer-events: auto;
             border: 1px solid rgba(0, 255, 255, 0.3);
             box-shadow: 0 0 15px rgba(0, 255, 255, 0.2);
+            max-width: 90vw; /* Prevent controls from flowing off screen */
+            font-family: 'Audiowide', sans-serif;
         }
         .control-row {
             display: flex;
-            gap: 20px;
             align-items: center;
+            flex-wrap: wrap; /* Allow wrapping on small screens */
+            justify-content: flex-start; /* Left align in desktop mode */
+            height: 40px; /* Fixed height for consistent spacing */
         }
         .control-label {
-            width: 80px;
+            width: 120px;
             text-shadow: 0 0 5px #00ffff;
+            font-size: 16px;
+            text-align: right;
+            padding-right: 15px;
         }
         .angle-hint {
             font-size: 12px;
@@ -52,27 +60,37 @@
             color: #aaffff;
         }
         input[type="range"] {
-            width: 150px;
+            width: 220px;
             -webkit-appearance: none;
-            height: 8px;
+            height: 12px; /* Increased height for better touch */
             background: linear-gradient(90deg, #001f3f, #00ffff);
-            border-radius: 5px;
+            border-radius: 10px;
             cursor: pointer;
+            touch-action: none; /* Prevents scrolling while using sliders */
         }
         input[type="range"]::-webkit-slider-thumb {
             -webkit-appearance: none;
-            width: 15px;
-            height: 15px;
+            width: 24px; /* Larger thumb for touch */
+            height: 24px; /* Larger thumb for touch */
             background: white;
             border-radius: 50%;
             cursor: pointer;
             box-shadow: 0 0 5px #00ffff;
         }
+        input[type="range"]::-moz-range-thumb {
+            width: 24px; /* Larger thumb for touch */
+            height: 24px; /* Larger thumb for touch */
+            background: white;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 5px #00ffff;
+            border: none;
+        }
         button {
             background: linear-gradient(to bottom, #006F82, #00404D);
             border: none;
             color: white;
-            padding: 10px 15px;
+            padding: 15px 20px; /* Larger padding for better touch targets */
             text-align: center;
             border-radius: 5px;
             cursor: pointer;
@@ -80,6 +98,8 @@
             border: 1px solid #00ffff;
             box-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
             text-shadow: 0 0 5px #00ffff;
+            font-size: 16px; /* Larger font for better visibility */
+            min-width: 160px; /* Ensure minimum width for touch */
         }
         button:hover {
             background: linear-gradient(to bottom, #008FAA, #006F82);
@@ -106,6 +126,7 @@
             border: 2px solid rgba(0, 255, 255, 0.3);
             box-shadow: 0 0 30px rgba(0, 255, 255, 0.3);
             backdrop-filter: blur(5px);
+            z-index: 1000;
         }
         #math-question h3 {
             color: #00ffff;
@@ -120,14 +141,14 @@
         }
         #math-question input {
             margin-top: 20px;
-            padding: 10px;
+            padding: 15px; /* Increased padding for better touch area */
             width: 100px;
             text-align: center;
             background-color: rgba(255, 255, 255, 0.2);
             border: 2px solid #00ffff;
             border-radius: 5px;
             color: white;
-            font-size: 24px;
+            font-size: 28px; /* Larger font size for better visibility */
             font-weight: bold;
         }
         #result-message {
@@ -193,6 +214,87 @@
         .computer-health .title {
             color: #ff3b3b;
         }
+        
+        /* Media queries for responsive design */
+        @media (max-width: 768px) {
+            .control-row {
+                gap: 10px;
+                margin-bottom: 10px;
+                justify-content: center; /* Center items when on mobile */
+                height: auto; /* Allow flexible height on mobile */
+            }
+            
+            .control-label {
+                width: 80px;
+                font-size: 14px;
+                text-align: left;
+                padding-right: 0;
+            }
+            
+            input[type="range"] {
+                width: 140px;
+            }
+            
+            button {
+                width: 100%; /* Full width buttons on mobile */
+                padding: 16px 10px;
+            }
+            
+            #game-ui {
+                padding: 15px;
+                gap: 5px;
+            }
+            
+            #angle-value, #direction-value, #power-value {
+                width: auto;
+                font-size: 18px;
+                margin-left: 10px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .score-container {
+                gap: 20px;
+                padding: 8px 15px;
+            }
+            
+            .health-bar-container {
+                width: 120px;
+            }
+            
+            input[type="range"] {
+                width: 120px;
+            }
+            
+            #math-question {
+                width: 90%;
+                padding: 20px;
+            }
+            
+            #math-question h3 {
+                font-size: 22px;
+            }
+            
+            #math-question p {
+                font-size: 20px;
+            }
+            
+            /* Adjust control values display */
+            #angle-value, #direction-value, #power-value {
+                min-width: 40px;
+                text-align: center;
+            }
+        }
+
+        #angle-value, #direction-value, #power-value {
+            width: 60px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 24px;
+            color: #00ffff;
+            text-shadow: 0 0 8px rgba(0, 255, 255, 0.7);
+            margin-left: 15px;
+        }
     </style>
     <link href="https://fonts.googleapis.com/css2?family=Audiowide&display=swap" rel="stylesheet">
 </head>
@@ -232,13 +334,11 @@
                 <span class="control-label">Angle:</span>
                 <input type="range" id="angle-control" min="0" max="90" value="45">
                 <span id="angle-value">45°</span>
-                <span class="angle-hint">(0° = horizontal, 90° = vertical)</span>
             </div>
             <div class="control-row">
                 <span class="control-label">Direction:</span>
                 <input type="range" id="direction-control" min="-45" max="45" value="0">
                 <span id="direction-value">0°</span>
-                <span class="angle-hint">(-45° = left, 0° = forward, 45° = right)</span>
             </div>
             <div class="control-row">
                 <span class="control-label">Power:</span>
@@ -663,7 +763,7 @@
                 }
             });
             
-            // Answer submission - using the correct ID 'submit-answer' instead of 'answer-submit'
+            // Answer submission
             document.getElementById('submit-answer').addEventListener('click', function() {
                 checkAnswer();
             });
@@ -676,8 +776,92 @@
                 }
             });
             
+            // Add touch-specific enhancements for mobile
+            addMobileTouchSupport();
+            
             // Initialize the power-ups display
             updatePowerupsDisplay();
+        }
+        
+        // New function to add mobile-specific touch support
+        function addMobileTouchSupport() {
+            // Prevent double-tap to zoom
+            document.addEventListener('touchend', function(event) {
+                if (event.target.tagName === 'BUTTON' || 
+                    event.target.tagName === 'INPUT' || 
+                    event.target.id === 'math-question') {
+                    event.preventDefault();
+                }
+            }, { passive: false });
+            
+            // Prevent pinch zoom on game controls
+            document.addEventListener('touchmove', function(event) {
+                if (event.target.type === 'range' || 
+                    event.target.tagName === 'BUTTON' || 
+                    event.target.id === 'game-ui' ||
+                    event.target.id === 'math-question') {
+                    if (event.touches.length > 1) {
+                        event.preventDefault();
+                    }
+                }
+            }, { passive: false });
+            
+            // Make range inputs work better on touch devices
+            const rangeInputs = document.querySelectorAll('input[type="range"]');
+            rangeInputs.forEach(function(input) {
+                // Add touch event handlers for better mobile experience
+                input.addEventListener('touchstart', function(e) {
+                    // Prevent screen from scrolling when adjusting sliders
+                    e.preventDefault();
+                    
+                    // Update the value based on touch position
+                    updateRangeFromTouch(e, this);
+                }, { passive: false });
+                
+                input.addEventListener('touchmove', function(e) {
+                    // Prevent screen from scrolling when adjusting sliders
+                    e.preventDefault();
+                    
+                    // Update the value based on touch position
+                    updateRangeFromTouch(e, this);
+                }, { passive: false });
+            });
+            
+            // Helper function to update range input value from touch position
+            function updateRangeFromTouch(e, input) {
+                const touch = e.touches[0];
+                const rect = input.getBoundingClientRect();
+                const width = rect.width;
+                const x = touch.clientX - rect.left;
+                
+                // Calculate percentage
+                let pct = x / width;
+                if (pct < 0) pct = 0;
+                if (pct > 1) pct = 1;
+                
+                // Calculate new value
+                const min = parseInt(input.min || 0);
+                const max = parseInt(input.max || 100);
+                const newValue = min + (max - min) * pct;
+                
+                // Update input value
+                input.value = Math.round(newValue);
+                
+                // Trigger input event to update display
+                const event = new Event('input', {
+                    bubbles: true,
+                    cancelable: true,
+                });
+                input.dispatchEvent(event);
+            }
+            
+            // Make math input field work better on mobile
+            const answerInput = document.getElementById('answer-input');
+            if (answerInput) {
+                // Ensure numeric keyboard on mobile
+                answerInput.inputMode = 'numeric';
+                answerInput.pattern = '[0-9]*';
+            }
         }
         
         function showMathQuestion() {
@@ -1579,17 +1763,25 @@
                     
                     endGame(false); // Player lost
                 } else {
+                    // Enemy tank destroyed
                     document.getElementById('result-message').textContent = 'You destroyed the enemy tank!';
                     
-                    // If in triple shot, note that despite destruction, sequence will continue
-                    if (waitingForTripleShot && currentShot < totalTripleShotBalls) {
+                    // If in triple shot, we need to properly end the sequence and the game
+                    if (waitingForTripleShot) {
                         document.getElementById('result-message').textContent = 
-                            `You destroyed the enemy tank! ${totalTripleShotBalls - currentShot} more shot${totalTripleShotBalls - currentShot > 1 ? 's' : ''} will still fire.`;
+                            `You destroyed the enemy tank with shot ${currentShot} of ${totalTripleShotBalls}!`;
                         document.getElementById('result-message').style.color = '#55ff55';
                         
-                        // Reset cannonball and switch turns (which will continue the triple shot)
-                        resetCannonball();
-                        switchTurn();
+                        // Immediately end triple shot sequence since the target is destroyed
+                        waitingForTripleShot = false;
+                        playerHasTripleShot = false;
+                        tripleShotUsed = false;
+                        currentShot = 0;
+                        
+                        // End the game with player victory
+                        setTimeout(() => {
+                            endGame(true); // Player won
+                        }, 1000); // Small delay to show the victory message
                         return;
                     }
                     
@@ -1715,11 +1907,26 @@
         }
         
         function switchTurn() {
+            // If game is no longer active, don't switch turns or continue triple shot
+            if (!gameActive) {
+                // Clear any remaining triple shot
+                waitingForTripleShot = false;
+                currentShot = 0;
+                return;
+            }
+
             // If we're in the middle of a triple shot sequence, continue with the next shot
             // instead of switching turns
             if (waitingForTripleShot && currentShot < totalTripleShotBalls) {
                 // Fire the next shot in the triple shot sequence
                 setTimeout(() => {
+                    // Make sure game is still active before continuing triple shot
+                    if (!gameActive) {
+                        waitingForTripleShot = false;
+                        currentShot = 0;
+                        return;
+                    }
+                    
                     // Show message indicating which shot we're firing
                     document.getElementById('result-message').textContent = 
                         `Triple Shot: Firing shot ${currentShot + 1} of ${totalTripleShotBalls}`;
@@ -1980,6 +2187,10 @@
         
         function endGame(playerWon) {
             gameActive = false;
+            
+            // Clear any active triple shot sequence
+            waitingForTripleShot = false;
+            currentShot = 0;
             
             // Display end game message with more dramatic effect
             const message = playerWon 
@@ -2562,36 +2773,57 @@
             const tankPosition = tank.position.clone();
             
             // Check terrain height at multiple points under the tank for better stability
-            // Check at four corners of the tank's base (approximate based on tank dimensions)
-            const halfWidth = 0.9;  // Half the tank width (1.8/2)
-            const halfLength = 0.6; // Half the tank length (1.2/2)
+            // Check at four corners and center of the tank's base
+            const halfWidth = 0.6;  // Half the tank width
+            const halfLength = 0.6; // Half the tank length
             
+            // Get heights at multiple sampling points
             const heightFrontLeft = getTerrainHeightAt(tankPosition.x - halfWidth, tankPosition.z - halfLength);
             const heightFrontRight = getTerrainHeightAt(tankPosition.x + halfWidth, tankPosition.z - halfLength);
             const heightBackLeft = getTerrainHeightAt(tankPosition.x - halfWidth, tankPosition.z + halfLength);
             const heightBackRight = getTerrainHeightAt(tankPosition.x + halfWidth, tankPosition.z + halfLength);
+            const heightCenter = getTerrainHeightAt(tankPosition.x, tankPosition.z);
             
-            // Use the highest point for the terrain height to ensure tank rests on its lowest corner
-            const terrainHeight = Math.max(heightFrontLeft, heightFrontRight, heightBackLeft, heightBackRight);
+            // Use a weighted combination of the average and the center point
+            // This gives more weight to the center, ensuring better stability
+            const weightedHeight = (heightCenter * 3 + heightFrontLeft + heightFrontRight + heightBackLeft + heightBackRight) / 7;
+            
+            // Also calculate the max height for better ground contact
+            const maxHeight = Math.max(heightFrontLeft, heightFrontRight, heightBackLeft, heightBackRight, heightCenter);
+            
+            // Use a blend of weighted average and max height
+            // This ensures we don't float too much but also don't tilt excessively
+            const terrainHeight = weightedHeight * 0.7 + maxHeight * 0.3;
             
             // Calculate the target position with the tank's base at terrain height
             // Adding 0.5 as that appears to be the initial y-offset when creating the tanks
             const targetHeight = terrainHeight + 0.5;
             
             // Calculate tilt angles based on terrain differences
-            // (Only applying subtle rotations to avoid physics oddities while maintaining visual effect)
-            const pitchAngle = Math.atan2(
+            // Calculate pitch (front-to-back tilt)
+            let pitchAngle = Math.atan2(
                 (heightBackLeft + heightBackRight) / 2 - (heightFrontLeft + heightFrontRight) / 2, 
                 halfLength * 2
-            ) * 0.5; // Scale down angle for subtlety
+            );
             
-            const rollAngle = Math.atan2(
+            // Calculate roll (side-to-side tilt)
+            let rollAngle = Math.atan2(
                 (heightFrontRight + heightBackRight) / 2 - (heightFrontLeft + heightBackLeft) / 2,
                 halfWidth * 2
-            ) * 0.5; // Scale down angle for subtlety
+            );
+            
+            // Apply limits to prevent excessive tilting
+            // Max tilt of 15 degrees (in radians) in any direction
+            const maxTiltAngle = THREE.MathUtils.degToRad(15);
+            pitchAngle = THREE.MathUtils.clamp(pitchAngle, -maxTiltAngle, maxTiltAngle);
+            rollAngle = THREE.MathUtils.clamp(rollAngle, -maxTiltAngle, maxTiltAngle);
+            
+            // Scale down the angles for more subtle tilting
+            pitchAngle *= 0.4;
+            rollAngle *= 0.4;
             
             // Apply rotation to match terrain slope (smoothly)
-            const rotationSpeed = 3.0 * deltaTime; // Adjust rotation speed for smoothness
+            const rotationSpeed = 3.0 * deltaTime; // Reduced for more gentle rotation
             
             // Smoothly adjust rotation to match terrain
             tank.rotation.z = THREE.MathUtils.lerp(tank.rotation.z, rollAngle, rotationSpeed);
@@ -2604,8 +2836,8 @@
                     tank.userData.velocity = 0;
                 }
                 
-                // Apply gravity to velocity with damping for smoother movement
-                tank.userData.velocity += gravity * deltaTime * 0.5; // Half gravity for smoother effect
+                // Apply gravity to velocity
+                tank.userData.velocity += gravity * deltaTime * 0.6; // Moderate gravity
                 
                 // Apply velocity to position (falling)
                 tank.position.y -= tank.userData.velocity * deltaTime;
